@@ -12,3 +12,6 @@ __pycache__/
 .js
 .out
 .debug
+
+.idea/
+
