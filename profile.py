@@ -127,6 +127,34 @@ def traverse_dwarf(dwarf_path: str, filter='DW_OP_addr'):
     return glob_objs, var_names_list
 
 
+def traverse_dwarf_subprogs(dwarf_path: str):
+    func_objs = []
+    param_dict = dict()
+    func_names_list = []
+
+    current_func = dict()
+    with open(dwarf_path, 'r') as f:
+        dwarf_txt = f.read()
+        dwarf_objs = dwarf_txt.split('\n\n')
+        for obj in dwarf_objs:
+            if not obj.startswith('0x') or "DW_AT_name" not in obj:
+                continue
+            if "DW_TAG_subprogram" not in obj and "DW_TAG_formal_parameter" not in obj:
+                continue
+
+            obj_addr, obj_type, obj_dict = parse_dwarf_obj(obj)
+            if obj_type == "DW_TAG_subprogram":
+                func_objs.append((obj_addr, obj_dict))
+                func_names_list.append(obj_dict["DW_AT_name"])
+                current_func = obj_dict
+            elif obj_type == "DW_TAG_formal_parameter":
+                if current_func["DW_AT_name"] in param_dict.keys():
+                    param_dict[current_func["DW_AT_name"]].append(obj_dict)
+                else:
+                    param_dict[current_func["DW_AT_name"]] = [obj_dict]
+    return func_objs, param_dict, func_names_list
+
+
 def collect_glob_vars(c_src_path: str):
     out_path, clang_dwarf_txt_path = clang_dwarf(c_src_path)
     wasm_path, js_path, wasm_dwarf_txt_path = emscripten_dwarf(c_src_path)
@@ -154,8 +182,44 @@ def collect_glob_vars(c_src_path: str):
     status, output = utils.cmd("rm {}".format(js_path))
 
 
+def collect_funcs(c_src_path: str):
+    out_path, clang_dwarf_txt_path = clang_dwarf(c_src_path)
+    wasm_path, js_path, wasm_dwarf_txt_path = emscripten_dwarf(c_src_path)
+
+    wasm_func_objs, wasm_param_dict, wasm_func_names_list = traverse_dwarf_subprogs(wasm_dwarf_txt_path)
+    clang_func_objs, clang_param_dict, clang_func_names_list = traverse_dwarf_subprogs(clang_dwarf_txt_path)
+
+    new_wasm_funcs = []
+    new_clang_funcs = []
+    for obj in clang_func_objs:
+        if obj[1]["DW_AT_name"] in wasm_func_names_list:
+            new_clang_funcs.append(obj)
+            for wasm_obj in wasm_func_objs:
+                if wasm_obj[1]["DW_AT_name"] == obj[1]["DW_AT_name"]:
+                    new_wasm_funcs.append(wasm_obj)
+                    # debug
+                    print(obj)
+                    if obj[1]["DW_AT_name"] in clang_param_dict.keys():
+                        print(clang_param_dict[obj[1]["DW_AT_name"]])
+                    else:
+                        print("No parameter")
+                    print(wasm_obj)
+                    if wasm_obj[1]["DW_AT_name"] in wasm_param_dict.keys():
+                        print(wasm_param_dict[wasm_obj[1]["DW_AT_name"]])
+                        assert len(wasm_param_dict[wasm_obj[1]["DW_AT_name"]]) == len(clang_param_dict[obj[1]["DW_AT_name"]])
+                    else:
+                        print("No parameter")
+                    break
+            continue
+
+    status, output = utils.cmd("rm {}".format(out_path))
+    status, output = utils.cmd("rm {}".format(wasm_path))
+    status, output = utils.cmd("rm {}".format(js_path))
+
+
 if __name__ == '__main__':
     # get_global_vars("/home/lifter/Documents/WebAssembly/examples/test1090_re.c")
 
-    collect_glob_vars("/home/lifter/Documents/WebAssembly/examples/test1090_re.c")
+    # collect_glob_vars("/home/lifter/Documents/WebAssembly/examples/test1090_re.c")
+    collect_funcs("/home/lifter/Documents/WebAssembly/examples/test1090_re.c")
 
