@@ -174,12 +174,13 @@ def collect_glob_vars(c_src_path: str):
             continue
 
     # debug
-    print(new_wasm_globs)
-    print(new_clang_globs)
+    # print(new_wasm_globs)
+    # print(new_clang_globs)
 
     status, output = utils.cmd("rm {}".format(out_path))
     status, output = utils.cmd("rm {}".format(wasm_path))
     status, output = utils.cmd("rm {}".format(js_path))
+    return new_wasm_globs, new_clang_globs
 
 
 def collect_funcs(c_src_path: str):
@@ -198,23 +199,25 @@ def collect_funcs(c_src_path: str):
                 if wasm_obj[1]["DW_AT_name"] == obj[1]["DW_AT_name"]:
                     new_wasm_funcs.append(wasm_obj)
                     # debug
-                    print(obj)
-                    if obj[1]["DW_AT_name"] in clang_param_dict.keys():
-                        print(clang_param_dict[obj[1]["DW_AT_name"]])
-                    else:
-                        print("No parameter")
-                    print(wasm_obj)
-                    if wasm_obj[1]["DW_AT_name"] in wasm_param_dict.keys():
-                        print(wasm_param_dict[wasm_obj[1]["DW_AT_name"]])
-                        assert len(wasm_param_dict[wasm_obj[1]["DW_AT_name"]]) == len(clang_param_dict[obj[1]["DW_AT_name"]])
-                    else:
-                        print("No parameter")
+                    # print(obj)
+                    # if obj[1]["DW_AT_name"] in clang_param_dict.keys():
+                    #     print(clang_param_dict[obj[1]["DW_AT_name"]])
+                    # else:
+                    #     print("No parameter")
+                    # print(wasm_obj)
+                    # if wasm_obj[1]["DW_AT_name"] in wasm_param_dict.keys():
+                    #     print(wasm_param_dict[wasm_obj[1]["DW_AT_name"]])
+                    #     assert len(wasm_param_dict[wasm_obj[1]["DW_AT_name"]]) == len(clang_param_dict[obj[1]["DW_AT_name"]])
+                    # else:
+                    #     print("No parameter")
                     break
             continue
 
     status, output = utils.cmd("rm {}".format(out_path))
     status, output = utils.cmd("rm {}".format(wasm_path))
     status, output = utils.cmd("rm {}".format(js_path))
+
+    return (new_wasm_funcs, wasm_param_dict, wasm_func_names_list), (new_clang_funcs, clang_param_dict, clang_func_names_list)
 
 
 if __name__ == '__main__':
