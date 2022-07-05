@@ -55,9 +55,9 @@ def get_type_id(type_sec: str):
 
 def add_type(type_sec: str):
     last_id = get_type_id(type_sec)
-    type_sec += wasm_code.wasm_type_def.format(last_id + 1, last_id + 2, last_id + 3)
+    type_sec += wasm_code.wasm_type_def.format(last_id + 1, last_id + 2, last_id + 3, last_id + 4)
 
-    return type_sec, [last_id + 1, last_id + 2, last_id + 3]
+    return type_sec, [last_id + 1, last_id + 2, last_id + 3, last_id + 4]
 
 
 def get_data_offset(func_sec: str, with_skip=False):
@@ -74,13 +74,13 @@ def get_data_offset(func_sec: str, with_skip=False):
 
 def add_data_str(func_sec: str):
     data_offset, appro_len = get_data_offset(func_sec, with_skip=True)
-    next_offset = data_offset + appro_len * 2
+    next_offset = data_offset + appro_len
     idx = func_sec.rfind(')')
     func_sec = func_sec[:idx] + \
-               wasm_code.wasm_data_str.format(next_offset, next_offset + 12, next_offset + 24, next_offset + 36) + \
+               wasm_code.wasm_data_str.format(next_offset, next_offset + 12, next_offset + 24, next_offset + 36, next_offset + 48) + \
                func_sec[idx:]
 
-    return func_sec, [next_offset, next_offset + 12, next_offset + 24, next_offset + 36]
+    return func_sec, [next_offset, next_offset + 12, next_offset + 24, next_offset + 36, next_offset + 48]
 
 
 def add_data_str2(func_sec: str, func_objs: list):
@@ -102,18 +102,67 @@ def add_data_str2(func_sec: str, func_objs: list):
     return func_sec, func_name2offset
 
 
+def add_data_str3(func_sec: str, func_objs: list):
+    data_offset, appro_len = get_data_offset(func_sec)
+    next_offset = data_offset + appro_len * 2
+    idx = func_sec.rfind(')')
+
+    func_name_str = ''
+    func_name2offset = dict()
+    for obj in func_objs:
+        obj = obj[1]
+        func_name = obj["DW_AT_name"].strip('()').strip('"')
+        func_name_str += wasm_code.wasm_func_return_str.format(func_name, next_offset, func_name)
+        func_name2offset[func_name] = next_offset
+        next_offset += len(func_name) + 3  # $, \0a, and \00
+
+    func_sec = func_sec[:idx] + func_name_str + func_sec[idx:]
+
+    return func_sec, func_name2offset
+
+
 def add_utility_funcs(type_sec: str, type_ids: list, data_offsets: list):
     # print functions
     type_sec += wasm_code.wasm_myprint_i32w.format(type_ids[1], data_offsets[0])
     type_sec += wasm_code.wasm_myprint_i32v.format(type_ids[1], data_offsets[1])
     type_sec += wasm_code.wasm_myprint_i32p.format(type_ids[1], data_offsets[2])
     type_sec += wasm_code.wasm_myprint_i64p.format(type_ids[2], data_offsets[3])
+    type_sec += wasm_code.wasm_myprint_i32r.format(type_ids[3], data_offsets[4])
     type_sec += wasm_code.wasm_myprint_call.format(type_ids[1])
 
     # store functions
     type_sec += wasm_code.wasm_instrument_i32store.format(type_ids[0])
 
     return type_sec
+
+
+def get_return(func_txt: str):
+    r_num = 0
+    mat = re.search(r"\(result( [if]\d+)+\)", func_txt)
+    if mat:
+        r_num = mat.group(1).count(' ')
+        return r_num, mat.group(1).strip()
+    return r_num, ''
+
+
+def _instrument_return(func_txt: str, func_name: str, func_name2offset: dict):
+    r_num, r_type = get_return(func_txt)
+
+    lines = func_txt.strip().split('\n')
+    l = lines[-1].strip()
+    prefix_space = ' ' * lines[-1].find(l)
+
+    assert r_num <= 1  # currently, webassembly only support one return value or no return value
+
+    idx = func_txt.rfind(')')
+    if r_type == "i32":
+        l = prefix_space + "i32.const {}\n".format(func_name2offset[func_name]) + prefix_space + "call $myprint_call\n"
+        l += prefix_space + "call $myprint_i32r"
+        func_txt = func_txt[:idx] + '\n' + l + func_txt[idx:]
+    elif r_num > 0:
+        assert False, "return value type not implemented"
+
+    return func_txt
 
 
 def _instrument_func_line(func_txt: str):
@@ -241,6 +290,7 @@ def instrument_func_call(wat_txt, func_objs: list, param_dict: dict):
 
     func_sec = wat_txt[idx:]
     func_sec, func_name2offset = add_data_str2(func_sec, func_objs)
+    func_sec, func_return2offset = add_data_str3(func_sec, func_objs)
 
     # traverse all user-defined functions, and instrument all *.store instructions
     new_func = copy.deepcopy(func_sec)
@@ -258,6 +308,7 @@ def instrument_func_call(wat_txt, func_objs: list, param_dict: dict):
             assert obj["DW_AT_name"].strip('()').strip('"') == func_name
             # instrument
             new_func_define = _instrument_func_call(func_define, func_name, func_name2offset, obj, param_dict)
+            new_func_define = _instrument_return(new_func_define, func_name, func_return2offset)
             new_func = new_func.replace(func_define, new_func_define)
         else:
             continue
