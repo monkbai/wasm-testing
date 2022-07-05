@@ -55,34 +55,60 @@ def get_type_id(type_sec: str):
 
 def add_type(type_sec: str):
     last_id = get_type_id(type_sec)
-    type_sec += wasm_code.wasm_type_def.format(last_id+1, last_id+2)
+    type_sec += wasm_code.wasm_type_def.format(last_id + 1, last_id + 2, last_id + 3)
 
-    return type_sec, [last_id+1, last_id+2]
+    return type_sec, [last_id + 1, last_id + 2, last_id + 3]
 
 
-def get_data_offset(func_sec: str):
+def get_data_offset(func_sec: str, with_skip=False):
     idx = func_sec.rfind("  (data $")
     tmp = func_sec[idx:].strip()
     mat = re.search(r"\(i32.const (\d+)\) \"(.*?)\"", tmp)
     offset = int(mat.group(1))
     data_str = mat.group(2)
     appro_len = len(data_str) - 2 * data_str.count('\\')
+    if with_skip:
+        appro_len += 1024 + 256  # To avoid conflicts with uninitialized variables
     return offset, appro_len
 
 
 def add_data_str(func_sec: str):
+    data_offset, appro_len = get_data_offset(func_sec, with_skip=True)
+    next_offset = data_offset + appro_len * 2
+    idx = func_sec.rfind(')')
+    func_sec = func_sec[:idx] + \
+               wasm_code.wasm_data_str.format(next_offset, next_offset + 12, next_offset + 24, next_offset + 36) + \
+               func_sec[idx:]
+
+    return func_sec, [next_offset, next_offset + 12, next_offset + 24, next_offset + 36]
+
+
+def add_data_str2(func_sec: str, func_objs: list):
     data_offset, appro_len = get_data_offset(func_sec)
     next_offset = data_offset + appro_len * 2
     idx = func_sec.rfind(')')
-    func_sec = func_sec[:idx] + wasm_code.wasm_data_str.format(next_offset, next_offset+10) + func_sec[idx:]
 
-    return func_sec, [next_offset, next_offset+10]
+    func_name_str = ''
+    func_name2offset = dict()
+    for obj in func_objs:
+        obj = obj[1]
+        func_name = obj["DW_AT_name"].strip('()').strip('"')
+        func_name_str += wasm_code.wasm_func_names_str.format(func_name, next_offset, func_name)
+        func_name2offset[func_name] = next_offset
+        next_offset += len(func_name) + 3  # $, \0a, and \00
+
+    func_sec = func_sec[:idx] + func_name_str + func_sec[idx:]
+
+    return func_sec, func_name2offset
 
 
 def add_utility_funcs(type_sec: str, type_ids: list, data_offsets: list):
     # print functions
     type_sec += wasm_code.wasm_myprint_i32w.format(type_ids[1], data_offsets[0])
     type_sec += wasm_code.wasm_myprint_i32v.format(type_ids[1], data_offsets[1])
+    type_sec += wasm_code.wasm_myprint_i32p.format(type_ids[1], data_offsets[2])
+    type_sec += wasm_code.wasm_myprint_i64p.format(type_ids[2], data_offsets[3])
+    type_sec += wasm_code.wasm_myprint_call.format(type_ids[1])
 
     # store functions
     type_sec += wasm_code.wasm_instrument_i32store.format(type_ids[0])
@@ -102,6 +128,48 @@ def _instrument_func_line(func_txt: str):
             l = prefix_space + "call $instrument_i32store  ;; i32.store"
             new_func_txt += l + '\n'
             idx += 1
+            continue
+        new_func_txt += lines[idx] + '\n'
+        idx += 1
+    return new_func_txt
+
+
+def _instrument_func_call(func_txt: str, func_name: str, func_name2offset: dict, func_obj: dict, param_dict: dict):
+    new_func_txt = ''
+    lines = func_txt.split('\n')
+    idx = 0
+
+    start_flag = 0
+    while idx < len(lines):
+        l = lines[idx].strip()
+        prefix_space = ' ' * lines[idx].find(l)
+
+        if not l.startswith('(') and not start_flag:
+            # print function name
+            l = prefix_space + "i32.const {}\n".format(
+                func_name2offset[func_name]) + prefix_space + "call $myprint_call\n"
+
+            # print function parameters
+            if func_obj["DW_AT_name"] in param_dict.keys():
+                params = param_dict[func_obj["DW_AT_name"]]
+                param_idx = 0
+                while param_idx < len(params):
+                    param = params[param_idx]
+                    l += prefix_space + 'local.get {}\n'.format(param_idx)
+                    param_type = param["DW_AT_type"]
+                    if 'int64' in param_type:
+                        l += prefix_space + 'call $myprint_i64p\n'
+                    elif 'char*' in param_type or '"int"' in param_type:
+                        l += prefix_space + 'call $myprint_i32p\n'
+                    else:
+                        assert False, "param type not implemented"
+                    param_idx += 1
+
+            # original first line
+            l += lines[idx]
+            new_func_txt += l + '\n'
+            idx += 1
+            start_flag = 1
             continue
         new_func_txt += lines[idx] + '\n'
         idx += 1
@@ -161,10 +229,48 @@ def instrument_glob_write(wat_txt, func_objs: list):
     return type_sec + new_func
 
 
-def instrument(wasm_path: str, glob_objs: list, func_objs: list, new_wasm_path: str):
+def instrument_func_call(wat_txt, func_objs: list, param_dict: dict):
+    # func names list:
+    func_names = []
+    for obj in func_objs:
+        obj = obj[1]
+        func_names.append(obj["DW_AT_name"].strip('()').strip('"'))
+
+    idx = wat_txt.find('  (func ')
+    type_sec = wat_txt[:idx]
+
+    func_sec = wat_txt[idx:]
+    func_sec, func_name2offset = add_data_str2(func_sec, func_objs)
+
+    # traverse all user-defined functions, and instrument all *.store instructions
+    new_func = copy.deepcopy(func_sec)
+    it = re.finditer(r"\(func \$(\w+) ", func_sec)
+    for match in it:
+        start_idx = match.start()
+        func_define = extract_func_define(func_sec, start_idx)
+        assert func_define.count("(func $") == 1, "error: incorrect regexp"
+        func_name = match.group(1)
+        if func_name in func_names:
+            for obj in func_objs:
+                obj = obj[1]
+                if obj["DW_AT_name"].strip('()').strip('"') == func_name:
+                    break
+            assert obj["DW_AT_name"].strip('()').strip('"') == func_name
+            # instrument
+            new_func_define = _instrument_func_call(func_define, func_name, func_name2offset, obj, param_dict)
+            new_func = new_func.replace(func_define, new_func_define)
+        else:
+            continue
+
+    return type_sec + new_func
+
+
+def instrument(wasm_path: str, glob_objs: list, func_objs: list, param_dict: dict, new_wasm_path: str):
     wat_txt = wasm2wat(wasm_path)
 
     new_wat_txt = instrument_glob_write(wat_txt, func_objs)
+
+    new_wat_txt = instrument_func_call(new_wat_txt, func_objs, param_dict)
 
     wat2wasm(new_wasm_path, new_wat_txt)
 
@@ -174,10 +280,10 @@ def main():
     c_src_path = "/home/lifter/Documents/WebAssembly/examples/test1090_re.c"
     wasm_globs, clang_globs = profile.collect_glob_vars(c_src_path)
     (wasm_func_objs, wasm_param_dict, wasm_func_names_list), \
-        (clang_func_objs, clang_param_dict, clang_func_names_list) = profile.collect_funcs(c_src_path)
+    (clang_func_objs, clang_param_dict, clang_func_names_list) = profile.collect_funcs(c_src_path)
     wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_src_path)
 
-    instrument(wasm_path, wasm_globs, wasm_func_objs, wasm_path)
+    instrument(wasm_path, wasm_globs, wasm_func_objs, wasm_param_dict, wasm_path)
 
 
 if __name__ == '__main__':
