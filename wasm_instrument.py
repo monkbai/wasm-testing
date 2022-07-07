@@ -331,7 +331,7 @@ def main():
     c_src_path = "/home/lifter/Documents/WebAssembly/examples/test1090_re.c"
     wasm_globs, clang_globs = profile.collect_glob_vars(c_src_path)
     (wasm_func_objs, wasm_param_dict, wasm_func_names_list), \
-    (clang_func_objs, clang_param_dict, clang_func_names_list) = profile.collect_funcs(c_src_path)
+        (clang_func_objs, clang_param_dict, clang_func_names_list) = profile.collect_funcs(c_src_path)
     wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_src_path)
 
     instrument(wasm_path, wasm_globs, wasm_func_objs, wasm_param_dict, wasm_path)
