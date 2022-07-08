@@ -13,7 +13,7 @@ node_path = '/home/tester/Documents/WebAssembly/emsdk/node/14.18.2_64bit/bin'
 
 emcc_cmd = 'emcc -w -O3 -I' + csmith_runtime + ' {} -o {} -o {}'
 emcc_dwarf_cmd = 'emcc -w -g -O3 -I' + csmith_runtime + ' {} -o {} -o {}'
-nodejs_cmd = 'node {}'
+nodejs_cmd = 'node {} > {}'
 
 wasm2wat_cmd = "/home/tester/Documents/WebAssembly/wabt/build/wasm2wat {} -o {}"
 wat2wasm_cmd = "/home/tester/Documents/WebAssembly/wabt/build/wat2wasm {} -o {}"

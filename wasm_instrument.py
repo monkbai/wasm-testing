@@ -326,9 +326,24 @@ def instrument(wasm_path: str, glob_objs: list, func_objs: list, param_dict: dic
     wat2wasm(new_wasm_path, new_wat_txt)
 
 
+def run_wasm(js_path: str):
+    js_path = os.path.abspath(js_path)
+    output_path = js_path + '.trace'
+    dir_path = os.path.dirname(js_path)
+
+    tmp_dir = utils.project_dir
+    utils.project_dir = dir_path
+
+    status, output = utils.cmd(config.nodejs_cmd.format(js_path, output_path))
+
+    utils.project_dir = tmp_dir
+
+    return output_path
+
+
 def main():
     # test
-    c_src_path = "/home/lifter/Documents/WebAssembly/examples/test1090_re.c"
+    c_src_path = "/home/tester/Documents/WebAssembly/examples/test1090_re.c"
     wasm_globs, clang_globs = profile.collect_glob_vars(c_src_path)
     (wasm_func_objs, wasm_param_dict, wasm_func_names_list), \
         (clang_func_objs, clang_param_dict, clang_func_names_list) = profile.collect_funcs(c_src_path)
@@ -338,5 +353,5 @@ def main():
 
 
 if __name__ == '__main__':
-    # instrument_glob_write("/home/lifter/Documents/WebAssembly/examples/test1090_re.wasm")
+    # instrument_glob_write("/home/tester/Documents/WebAssembly/examples/test1090_re.wasm")
     main()

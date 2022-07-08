@@ -221,8 +221,8 @@ def collect_funcs(c_src_path: str):
 
 
 if __name__ == '__main__':
-    # get_global_vars("/home/lifter/Documents/WebAssembly/examples/test1090_re.c")
+    # get_global_vars("/home/tester/Documents/WebAssembly/examples/test1090_re.c")
 
-    # collect_glob_vars("/home/lifter/Documents/WebAssembly/examples/test1090_re.c")
-    collect_funcs("/home/lifter/Documents/WebAssembly/examples/test1090_re.c")
+    # collect_glob_vars("/home/tester/Documents/WebAssembly/examples/test1090_re.c")
+    collect_funcs("/home/tester/Documents/WebAssembly/examples/test1090_re.c")
 
