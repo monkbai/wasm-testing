@@ -12,7 +12,7 @@ def get_name_and_addr(glob_obj: dict):
     obj = glob_obj
     obj_name = obj['DW_AT_name'].strip('()').strip('"')
     obj_addr = obj["DW_AT_location"]
-    obj_addr = int(obj_addr.split(' ')[1], 16)
+    obj_addr = int(obj_addr.strip('()').split(' ')[1], 16)
 
     obj_type = obj["DW_AT_type"]
     if '[' in obj_type:  # array, return address list
@@ -53,7 +53,8 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
             l = lines[idx]
             if l.startswith('$') and 'R:' not in l:  # func call
                 func_name = l.strip().strip('$')
-                param_list = wasm_param_dict[func_name] if func_name in wasm_param_dict.keys() else []
+                func_key = '("{}")'.format(func_name)
+                param_list = wasm_param_dict[func_key] if func_key in wasm_param_dict.keys() else []
                 arg_list = []
                 for param in param_list:
                     idx += 1
@@ -76,11 +77,13 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
                 write_addr = int(l[l.find(':')+1:].strip(), 16)
                 idx += 1
                 l = lines[idx]
-                assert l.startswith('P: ')
+                assert l.startswith('V: ')
                 write_value = int(l[l.find(':') + 1:].strip(), 16)
 
                 glob_name = ''  # find corresponding global name
                 for obj in wasm_globs:
+                    if len(glob_name) > 0:
+                        break
                     obj = obj[1]
                     obj_list, (min_addr, max_addr) = get_name_and_addr(obj)
                     if min_addr <= write_addr <= max_addr:
@@ -88,17 +91,16 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
                             if write_addr == addr:
                                 glob_name = name
                                 break
-                assert len(glob_name) != 0, "error: global {} not founded".format(hex(write_addr))
-
-                if glob_name in glob_trace_dict:
-                    glob_trace_dict[glob_name].append(write_value)
-                else:
-                    glob_trace_dict[glob_name] = [write_value]
+                if len(glob_name) != 0:
+                    if glob_name in glob_trace_dict:
+                        glob_trace_dict[glob_name].append(write_value)
+                    else:
+                        glob_trace_dict[glob_name] = [write_value]
 
             elif l.startswith('P: ') or l.startswith('V: '):
                 assert False, 'error during parsing raw wasm trace.'
             else:
-                continue
+                pass
             idx += 1
     return glob_trace_dict, func_trace_dict
 
@@ -124,8 +126,9 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
                 func_addr = int(l.strip().strip('>'), 16)
                 func_obj = get_func_obj(func_addr, clang_func_objs)
                 func_name = func_obj["DW_AT_name"].strip('()').strip('"')
+                func_key = func_obj["DW_AT_name"]
 
-                param_list = clang_param_dict[func_name] if func_name in clang_param_dict.keys() else []
+                param_list = clang_param_dict[func_key] if func_key in clang_param_dict.keys() else []
                 arg_list = []
                 for param in param_list:
                     idx += 1
@@ -138,7 +141,7 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
                 else:
                     func_trace_dict[func_name] = [('P', arg_list)]
             elif l.startswith('>') and 'R:' in l:  # func return
-                func_addr = int(l.strip().strip('>'), 16)
+                func_addr = int(l.split(' ')[0].strip().strip('>'), 16)
                 func_obj = get_func_obj(func_addr, clang_func_objs)
                 func_name = func_obj["DW_AT_name"].strip('()').strip('"')
 
@@ -151,7 +154,7 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
                 write_addr = int(l.split(':')[1].strip(), 16)
                 idx += 1
                 l = lines[idx]
-                assert l.startswith('P: ')
+                assert l.startswith('V: ')
                 write_value = int(l[l.find(':') + 1:].strip(), 16)
 
                 glob_name = ''  # find corresponding global name
@@ -173,21 +176,72 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
             elif l.startswith('P: ') or l.startswith('V: '):
                 assert False, 'error during parsing raw wasm trace.'
             else:
-                continue
+                pass
             idx += 1
     return glob_trace_dict, func_trace_dict
 
 
-def trace_check_glob_correct(wasm_glob_trace_dict: dict, clang_glob_trace_dict: dict):
-    pass
+def trace_check_glob_correct(wasm_glob_trace_dict: dict, clang_glob_trace_dict: dict, wasm_globs: list):
+    inconsistent_list = []
+    for glob_name, glob_trace in wasm_glob_trace_dict.items():
+        glob_key = glob_name
+        if '[' in glob_key:
+            glob_key = glob_key[:glob_key.find('[')]
+        for obj in wasm_globs:
+            obj = obj[1]
+            if obj["DW_AT_name"] == '("{}")'.format(glob_key):
+                break
+        assert obj["DW_AT_name"] == '("{}")'.format(glob_key)
+        if '*' in obj["DW_AT_type"]:  # TODO: currently we ignore all pointers
+            continue
+
+        clang_trace = clang_glob_trace_dict[glob_name]
+        if glob_trace[-1] != clang_trace[-1]:
+            inconsistent_list.append(glob_name)
+            print('glob trace inconsistency founded.')
+            print('glob_name: {}, wasm_last_write: {}, clang_last_write: {}'.format(glob_name, glob_trace[-1], clang_trace[-1]))
+    return inconsistent_list
 
 
 def trace_check_glob_perf(wasm_glob_trace_dict: dict, clang_glob_trace_dict: dict):
     pass
 
 
-def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: dict):
-    pass
+def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: dict, wasm_func_objs: list, wasm_param_dict: dict):
+    inconsistent_list = []
+
+    for func_name, func_trace in wasm_func_trace_dict.items():
+        if func_name == 'main':
+            continue  # ignore main function, as the return value is not captured by pin tool (tracer)
+
+        func_key = '("{}")'.format(func_name)
+        check_flags = []
+        params = wasm_param_dict[func_key]
+        for param in params:
+            if '*' in param["DW_AT_type"] or '[' in param["DW_AT_type"]:
+                # TODO: currently ignore all pointer/array arguemnts
+                check_flags.append(False)
+            else:
+                check_flags.append(True)
+
+        clang_trace = clang_func_trace_dict[func_name]
+        assert len(clang_trace) == len(func_trace), "error: inconsistent length of function call.\nIs this possible?"
+        for i in range(len(func_trace)):
+            trace_item = func_trace[i]
+            clang_trace_item = clang_trace[i]
+            item_type = trace_item[0]
+            item_values = trace_item[1]
+            clang_item_type = clang_trace_item[0]
+            clang_item_values = clang_trace_item[1]
+            assert item_type == clang_item_type, 'error: inconsistent item type in func trace of {]'.format(func_name)
+            for j in range(len(check_flags)):
+                chk = check_flags[j]
+                if chk and item_values[j] != clang_item_values[j]:
+                    inconsistent_list.append(func_name)
+                    print('func trace inconsistency founded.')
+                    print('func_name: {}, item_index: {}, item_type: {}, arg_index: {}, arg_type: {}, wasm_arg_value: {}, clang_arg_value: {}'.format(
+                           func_name, i, item_type, j, params[j]["DW_AT_type"], item_values[j], clang_item_values[j]))
+    return inconsistent_list
 
 
 def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dict):
@@ -217,10 +271,13 @@ def trace_check(c_src_path: str):
                                                                         clang_globs, clang_func_objs, clang_param_dict)
 
     # TODO: consistency check
-    trace_check_glob_correct(wasm_glob_trace_dict, clang_glob_trace_dict)
-    trace_check_glob_perf(wasm_glob_trace_dict, clang_glob_trace_dict)
-    trace_check_func_correct(wasm_func_trace_dict, clang_func_trace_dict)
-    trace_check_func_perf(wasm_func_trace_dict, clang_func_trace_dict)
+    glob_correct_inconsistent_list = trace_check_glob_correct(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs)
+    # trace_check_glob_perf(wasm_glob_trace_dict, clang_glob_trace_dict)
+    func_correct_inconsistent_list = trace_check_func_correct(wasm_func_trace_dict, clang_func_trace_dict, wasm_func_objs, wasm_param_dict)
+    # trace_check_func_perf(wasm_func_trace_dict, clang_func_trace_dict)
+
+    print(glob_correct_inconsistent_list)
+    print(func_correct_inconsistent_list)
 
 
 def main():
