@@ -36,19 +36,19 @@ def lcs(list1: list, list2: list):
             else:
                 dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
     # debug
-    print(dp)
+    # print(dp)
 
     # get the LCS (index of list2)
     lcs_index = []
     i = n1
     j = n2
     while i > 0 and j > 0:
-        print('i {} j {}'.format(i, j))
+        # print('i {} j {}'.format(i, j))
         if (dp[i-1][j-1] + 1) == dp[i][j] and dp[i-1][j] != dp[i][j] and dp[i][j-1] != dp[i][j]:
             if list1[i-1] == list2[j-1]:
                 lcs_index.insert(0, j-1)
-            else:
-                print(list1[i-1], list2[j-1])
+            # else:
+            #     print(list1[i-1], list2[j-1])
             i -= 1
             j -= 1
         elif dp[i-1][j] == dp[i][j]:
