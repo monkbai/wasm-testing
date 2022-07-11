@@ -8,14 +8,28 @@ import wasm_instrument
 import pin_instrument
 
 
+glob_array_dict = dict()
+
+
+def clear_glob_array_dict():
+    global glob_array_dict
+    glob_array_dict.clear()
+
+
 def get_name_and_addr(glob_obj: dict):
     """ This function could be complex to handle different array/structure/union type """
+    global glob_array_dict
+
     obj = glob_obj
     obj_name = obj['DW_AT_name'].strip('()').strip('"')
     obj_addr = obj["DW_AT_location"]
     obj_addr = int(obj_addr.strip('()').split(' ')[1], 16)
-
     obj_type = obj["DW_AT_type"]
+
+    obj_key = obj["DW_AT_name"] + obj["DW_AT_location"]
+    if obj_key in glob_array_dict:
+        return glob_array_dict[obj_key]
+
     if '[' in obj_type:  # array, return address list
         obj_list = []
         obj_type = obj["DW_AT_type"]
@@ -56,11 +70,13 @@ def get_name_and_addr(glob_obj: dict):
                 for k in range(dim_len):
                     name += '[{}]'.format(idx_nums[k])
                 obj_list.append((name, obj_addr+count*step_size))
+            glob_array_dict[obj_key] = (obj_list, (obj_addr, obj_addr+(obj_num-1)*step_size))
             return obj_list, (obj_addr, obj_addr+(obj_num-1)*step_size)
         else:
             assert False
 
     else:  # single addr
+        glob_array_dict[obj_key] = ([(obj_name, obj_addr)], (obj_addr, obj_addr))
         return [(obj_name, obj_addr)], (obj_addr, obj_addr)
 
 
@@ -276,23 +292,29 @@ def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: 
                 check_flags.append(True)
 
         clang_trace = clang_func_trace_dict[func_name]
-        # TODO: assume Wasm compiler does not have such optimization
-        assert len(clang_trace) == len(func_trace), "error: inconsistent length of function call.\nIs this possible?"
-        for i in range(len(func_trace)):
-            trace_item = func_trace[i]
-            clang_trace_item = clang_trace[i]
-            item_type = trace_item[0]
-            item_values = trace_item[1]
-            clang_item_type = clang_trace_item[0]
-            clang_item_values = clang_trace_item[1]
-            assert item_type == clang_item_type, 'error: inconsistent item type in func trace of {]'.format(func_name)
-            for j in range(len(check_flags)):
-                chk = check_flags[j]
-                if chk and item_values[j] != clang_item_values[j]:
-                    inconsistent_list.append(func_name)
-                    print('func trace inconsistency founded.')
-                    print('func_name: {}, item_index: {}, item_type: {}, arg_index: {}, arg_type: {}, wasm_arg_value: {}, clang_arg_value: {}'.format(
-                           func_name, i, item_type, j, params[j]["DW_AT_type"], item_values[j], clang_item_values[j]))
+
+        # Emscripten has (advanced) optimization strategies that only inline some out of all function calls
+        # Thus, we cannot assume/assert len(clang_trace) == len(func_trace)
+        # Here, the assumption would be: function calls exist in wasm trace should also exist in clang trace
+        func_item_trace = []
+        for item in func_trace:
+            func_item_trace.append(lcs.FuncItem(item_type=item[0], item_values=item[1], check_flags=check_flags))
+
+        clang_item_trace = []
+        for item in clang_trace:
+            clang_item_trace.append(lcs.FuncItem(item_type=item[0], item_values=item[1], check_flags=check_flags))
+
+        for i in range(len(func_item_trace)):
+            match_flag = False
+            for j in range(len(clang_item_trace)):
+                if func_item_trace[i] == clang_item_trace[j]:
+                    match_flag = True
+                    break
+            if not match_flag:
+                inconsistent_list.append(func_name)
+                print('func trace inconsistency founded.')
+                print('func_name: {}, wasm_item_index: {}, item_type: {}'.format(
+                       func_name, i, func_item_trace[i].type))
     return inconsistent_list
 
 
