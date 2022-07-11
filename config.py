@@ -1,6 +1,10 @@
 import os
 
+csmith_path = '/home/tester/Documents/csmith/src/csmith'
+csmith_cmd = csmith_path + " --max-funcs 5 --no-safe-math --max-expr-complexity 3 > {}"
 csmith_runtime = '/home/tester/Documents/csmith/runtime'
+csmith_compile_cmd = 'gcc -O -g -w {} -I' + csmith_runtime + ' -o {}'
+
 clang_ir_cmd = "clang-12 -c -w -g -O0 -emit-llvm -S {} -o {}"
 clang_ir_cmd2 = "clang-12 -c -w -g -O0 -emit-llvm -S -I/home/tester/Documents/csmith/runtime {} -o {}"
 clang_dwarf_cmd2 = "clang-12 -w -g -O0 -I/home/tester/Documents/csmith/runtime {} -o {}"

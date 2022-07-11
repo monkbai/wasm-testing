@@ -14,9 +14,16 @@ def print_glob_addr(glob_objs:list, glob_addr_file: str):
             obj = obj[1]
             addr = int(obj["DW_AT_location"].strip('()').split(' ')[1], 16)
             var_type = obj["DW_AT_type"]
-            if mat := re.search(r'\(0x[\da-fA-F]+\s"(\w+)\[(\d+)]"\)', var_type):
+            if mat := re.search(r'\(0x[\da-fA-F]+\s"(\w+)(\[\d+])+"\)', var_type):
                 var_type = mat.group(1)
-                var_num = int(mat.group(2))
+                array_dim = mat.group(2)
+                array_dim = array_dim.replace('[', '')
+                array_dim = array_dim.split(']')
+                var_num = 1
+                for dim in array_dim:
+                    dim = dim.strip()
+                    if len(dim) > 0:
+                        var_num *= int(dim)
                 if "int64" in var_type:
                     step_size = 8
                 elif "int32" in var_type:
@@ -30,7 +37,7 @@ def print_glob_addr(glob_objs:list, glob_addr_file: str):
 
                 for i in range(var_num):
                     f.write(hex(addr + i * step_size) + '\n')
-            elif '[' not in var_type:
+            elif '[' not in var_type:  # record pointer values, but ignore them during trace consistency checking
                 f.write(hex(addr) + '\n')
             else:
                 assert False, "var type: {} not implemented".format(var_type)

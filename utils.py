@@ -43,4 +43,41 @@ def cmd_emsdk(commandline):
 
 
 project_dir = './'
+timeout_sec = 3
 
+
+def run_single_prog(prog_path):
+    global timeout_sec
+    proc = subprocess.Popen(prog_path, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    timer = Timer(timeout_sec, proc.kill)
+    try:
+        timer.start()
+        stdout, stderr = proc.communicate()
+    finally:
+        timer.cancel()
+    return stdout.decode('utf-8'), proc.returncode
+
+
+def csmith_generate(c_path: str):
+    c_path = os.path.abspath(c_path)
+    elf_path = c_path[:c_path.rfind('.')] + '.out'
+
+    while True:
+        status, output = cmd(config.csmith_cmd.format(c_path))
+        assert status == 0
+
+        # avoid huge test case, which is hard to locate bug statement
+        file_size = os.path.getsize(c_path)
+        if file_size >= 1024 * 8:  # TODO: size limit 8KB
+            continue
+
+        status, output = cmd(config.csmith_compile_cmd.format(c_path, elf_path))
+        if status != 0:
+            continue  # if cannot be compiled, re-generate a new source code
+
+        output, status = run_single_prog('timeout 3 ' + elf_path)
+        if status != 0:
+            continue
+
+        break
+    status, output = cmd("rm {}".format(elf_path))

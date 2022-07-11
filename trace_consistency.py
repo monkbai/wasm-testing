@@ -183,7 +183,7 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
 
 
 def trace_check_glob_correct(wasm_glob_trace_dict: dict, clang_glob_trace_dict: dict, wasm_globs: list):
-    print('Checking correctness (global writes) ...')
+    print('\nChecking correctness (global writes) ...')
     inconsistent_list = []
     for glob_name, glob_trace in wasm_glob_trace_dict.items():
         glob_key = glob_name
@@ -206,7 +206,7 @@ def trace_check_glob_correct(wasm_glob_trace_dict: dict, clang_glob_trace_dict: 
 
 
 def trace_check_glob_perf(wasm_glob_trace_dict: dict, clang_glob_trace_dict: dict, wasm_globs: list):
-    print('Checking performance (global writes) ...')
+    print('\nChecking performance (global writes) ...')
     inconsistent_list = []
     for glob_name, glob_trace in wasm_glob_trace_dict.items():
         glob_key = glob_name
@@ -224,18 +224,21 @@ def trace_check_glob_perf(wasm_glob_trace_dict: dict, clang_glob_trace_dict: dic
         lcs_trace = lcs.lcs(clang_trace, glob_trace)
         if len(glob_trace) != len(lcs_trace):
             inconsistent_list.append(glob_name)
-            print('glob trace inconsistency founded.')
+            if glob_trace[-1] == clang_trace[-1]:
+                print('glob trace performance inconsistency founded.')
+            else:
+                print('glob trace correctness inconsistency founded.')
             print('glob_name: {},'.format(glob_name), end=' ')
             for i in range(len(glob_trace)):
                 if i not in lcs_trace:
-                    print('redundant_write_index: {}, redundant_write_value: {},'.format(i, glob_trace[i]), end=' ')
+                    print('write_index: {}, write_value: {},'.format(i, glob_trace[i]), end=' ')
             print()
     return inconsistent_list
 
 
 def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: dict, wasm_func_objs: list, wasm_param_dict: dict):
     # TODO: Clang O0, Wasm O3, mainly focus on the correctness
-    print('Checking correctness (function calls) ...')
+    print('\nChecking correctness (function calls) ...')
     inconsistent_list = []
     for func_name, func_trace in wasm_func_trace_dict.items():
         if func_name == 'main':
@@ -252,7 +255,8 @@ def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: 
                 check_flags.append(True)
 
         clang_trace = clang_func_trace_dict[func_name]
-        assert len(clang_trace) == len(func_trace), "error: inconsistent length of function call.\nIs this possible?"  # TODO: assume Wasm compiler does not have such optimization
+        # TODO: assume Wasm compiler does not have such optimization
+        assert len(clang_trace) == len(func_trace), "error: inconsistent length of function call.\nIs this possible?"
         for i in range(len(func_trace)):
             trace_item = func_trace[i]
             clang_trace_item = clang_trace[i]
@@ -273,7 +277,7 @@ def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: 
 
 def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dict, wasm_func_objs: list, wasm_param_dict: dict):
     # TODO: for the performance check, we compare Clang O3 with Wasm O3? i.e. does Wasm compiler have comparable optimization quality?
-    print('Checking performance (function calls) ...')
+    print('\nChecking performance (function calls) ...')
     inconsistent_list = []
     for func_name, func_trace in wasm_func_trace_dict.items():
         if func_name == 'main':
@@ -297,7 +301,7 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
 
         clang_trace = clang_func_trace_dict[func_name]
 
-        # TODO: if we want to check missed opportunity we need to assert len(clang_trace) != len(func_trace), i.e. Clang may have some advanced optimizations
+        # TODO: if we want to check missed opt opportunity we need to assume it is possible that len(clang_trace) != len(func_trace), i.e. Clang may have some advanced optimizations
         # assert len(clang_trace) == len(func_trace), "error: inconsistent length of function call.\nIs this possible?"
         func_item_trace = []
         for item in func_trace:
@@ -314,13 +318,13 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
             print('func_name: {},'.format(func_name), end=' ')
             for i in range(len(func_item_trace)):
                 if i not in lcs_item_trace:
-                    print('item_index: {}, item_type: {}'.format(i, func_item_trace[i][0]), end=' ')
+                    print('item_index: {}, item_type: {}'.format(i, func_trace[i][0]), end=' ')
             print()
     return inconsistent_list
 
 
 def trace_check(c_src_path: str):
-
+    print("\nTrace Consistency Checking for {}...".format(c_src_path))
     # profile, get dwarf information of global variables and function arguments
     wasm_globs, clang_globs = profile.collect_glob_vars(c_src_path)
     (wasm_func_objs, wasm_param_dict, wasm_func_names_list), \
@@ -342,13 +346,19 @@ def trace_check(c_src_path: str):
                                                                         clang_globs, clang_func_objs, clang_param_dict)
 
     # TODO: consistency check
-    glob_correct_inconsistent_list = trace_check_glob_correct(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs)
-    # trace_check_glob_perf(wasm_glob_trace_dict, clang_glob_trace_dict)
-    func_correct_inconsistent_list = trace_check_func_correct(wasm_func_trace_dict, clang_func_trace_dict, wasm_func_objs, wasm_param_dict)
-    # trace_check_func_perf(wasm_func_trace_dict, clang_func_trace_dict)
+    glob_correct_inconsistent_list = \
+        trace_check_glob_correct(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs)
+    glob_perf_inconsistent_list = \
+        trace_check_glob_perf(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs)
+    func_correct_inconsistent_list = \
+        trace_check_func_correct(wasm_func_trace_dict, clang_func_trace_dict, wasm_func_objs, wasm_param_dict)
+    func_perf_inconsistent_list = \
+        trace_check_func_perf(wasm_func_trace_dict, clang_func_trace_dict, wasm_func_objs, wasm_param_dict)
 
     print(glob_correct_inconsistent_list)
+    print(glob_perf_inconsistent_list)
     print(func_correct_inconsistent_list)
+    print(func_perf_inconsistent_list)
 
 
 def main():
@@ -357,5 +367,16 @@ def main():
     trace_check(c_src_path)
 
 
+def test(debug_dir="./debug_cases"):
+    debug_dir = os.path.abspath(debug_dir)
+    files = os.listdir(debug_dir)
+    files.sort()
+    for f in files:
+        if f.endswith('.c'):
+            f = os.path.join(debug_dir, f)
+            trace_check(f)
+
+
 if __name__ == '__main__':
-    main()
+    # main()
+    test()

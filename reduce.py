@@ -1,3 +1,5 @@
+""" Deprecated """
+
 import os
 import stat
 
