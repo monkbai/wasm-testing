@@ -55,9 +55,9 @@ def get_type_id(type_sec: str):
 
 def add_type(type_sec: str):
     last_id = get_type_id(type_sec)
-    type_sec += wasm_code.wasm_type_def.format(last_id + 1, last_id + 2, last_id + 3, last_id + 4)
+    type_sec += wasm_code.wasm_type_def.format(last_id + 1, last_id + 2, last_id + 3, last_id + 4, last_id + 5, last_id + 6)
 
-    return type_sec, [last_id + 1, last_id + 2, last_id + 3, last_id + 4]
+    return type_sec, [last_id + 1, last_id + 2, last_id + 3, last_id + 4, last_id + 5, last_id + 6]
 
 
 def get_data_offset(func_sec: str, with_skip=False):
@@ -77,10 +77,10 @@ def add_data_str(func_sec: str):
     next_offset = data_offset + appro_len
     idx = func_sec.rfind(')')
     func_sec = func_sec[:idx] + \
-               wasm_code.wasm_data_str.format(next_offset, next_offset + 12, next_offset + 24, next_offset + 36, next_offset + 48) + \
+               wasm_code.wasm_data_str.format(next_offset, next_offset+12, next_offset+24, next_offset+36, next_offset+48, next_offset+60) + \
                func_sec[idx:]
 
-    return func_sec, [next_offset, next_offset + 12, next_offset + 24, next_offset + 36, next_offset + 48]
+    return func_sec, [next_offset, next_offset+12, next_offset+24, next_offset+36, next_offset+48, next_offset+60]
 
 
 def add_data_str2(func_sec: str, func_objs: list):
@@ -127,11 +127,14 @@ def add_utility_funcs(type_sec: str, type_ids: list, data_offsets: list):
     type_sec += wasm_code.wasm_myprint_i32v.format(type_ids[1], data_offsets[1])
     type_sec += wasm_code.wasm_myprint_i32p.format(type_ids[1], data_offsets[2])
     type_sec += wasm_code.wasm_myprint_i64p.format(type_ids[2], data_offsets[3])
-    type_sec += wasm_code.wasm_myprint_i32r.format(type_ids[3], data_offsets[4])
+    type_sec += wasm_code.wasm_myprint_i64v.format(type_ids[2], data_offsets[4])
+    type_sec += wasm_code.wasm_myprint_i32r.format(type_ids[3], data_offsets[5])
     type_sec += wasm_code.wasm_myprint_call.format(type_ids[1])
 
     # store functions
     type_sec += wasm_code.wasm_instrument_i32store.format(type_ids[0])
+    type_sec += wasm_code.wasm_instrument_i64store.format(type_ids[4])
+    type_sec += wasm_code.wasm_instrument_i32store_off.format(type_ids[5])
 
     return type_sec
 
@@ -175,6 +178,17 @@ def _instrument_func_line(func_txt: str):
 
         if l == 'i32.store':
             l = prefix_space + "call $instrument_i32store  ;; i32.store"
+            new_func_txt += l + '\n'
+            idx += 1
+            continue
+        elif l == 'i64.store':
+            l = prefix_space + "call $instrument_i64store  ;; i64.store"
+            new_func_txt += l + '\n'
+            idx += 1
+            continue
+        elif mat := re.match(r'i32\.store offset=(\d+)', l):
+            addr_offset = int(mat.group(1))
+            l = prefix_space + "i32.const {}\n".format(addr_offset) + prefix_space + "call $instrument_i32store_off  ;; " + l
             new_func_txt += l + '\n'
             idx += 1
             continue

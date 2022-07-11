@@ -19,9 +19,17 @@ def get_name_and_addr(glob_obj: dict):
     if '[' in obj_type:  # array, return address list
         obj_list = []
         obj_type = obj["DW_AT_type"]
-        if mat := re.search(r'\(0x[\da-fA-F]+\s"(\w+)\[(\d+)]"\)', obj_type):
+        if mat := re.search(r'\(0x[\da-fA-F]+\s"(\w+)((\[\d+])+)"\)', obj_type):
             obj_type = mat.group(1)
-            obj_num = int(mat.group(2))
+            array_dim = mat.group(2)
+            array_dim = array_dim.replace('[', '')
+            array_dim = array_dim.split(']')
+            array_dim.remove('')
+            obj_num = 1
+            for dim in array_dim:
+                dim = dim.strip()
+                if len(dim) > 0:
+                    obj_num *= int(dim)
             if "int64" in obj_type:
                 step_size = 8
             elif "int32" in obj_type:
@@ -33,8 +41,21 @@ def get_name_and_addr(glob_obj: dict):
             else:
                 assert False, "glob obj type: {} not implemented".format(obj_type)
 
-            for i in range(obj_num):
-                obj_list.append((obj_name+'[{}]'.format(i), obj_addr+i*step_size))
+            dim_len = len(array_dim)
+            for count in range(obj_num):
+                tmp_count = count
+                idx_nums = [0 for i in range(dim_len)]
+                dim_nums = [1 for i in range(dim_len)]
+                for i in range(dim_len):
+                    for j in range(i+1, dim_len):
+                        dim_nums[i] *= int(array_dim[j])
+                for j in range(dim_len):
+                    idx_nums[j] = int(tmp_count / dim_nums[j])
+                    tmp_count = tmp_count % dim_nums[j]
+                name = obj_name
+                for k in range(dim_len):
+                    name += '[{}]'.format(idx_nums[k])
+                obj_list.append((name, obj_addr+count*step_size))
             return obj_list, (obj_addr, obj_addr+(obj_num-1)*step_size)
         else:
             assert False

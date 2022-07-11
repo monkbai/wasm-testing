@@ -14,7 +14,7 @@ def print_glob_addr(glob_objs:list, glob_addr_file: str):
             obj = obj[1]
             addr = int(obj["DW_AT_location"].strip('()').split(' ')[1], 16)
             var_type = obj["DW_AT_type"]
-            if mat := re.search(r'\(0x[\da-fA-F]+\s"(\w+)(\[\d+])+"\)', var_type):
+            if mat := re.search(r'\(0x[\da-fA-F]+\s"(\w+)((\[\d+])+)"\)', var_type):
                 var_type = mat.group(1)
                 array_dim = mat.group(2)
                 array_dim = array_dim.replace('[', '')
