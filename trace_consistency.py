@@ -228,6 +228,7 @@ def trace_check_glob_correct(wasm_glob_trace_dict: dict, clang_glob_trace_dict: 
 
     # Case 1: inconsistent last write
     for glob_name, glob_trace in wasm_glob_trace_dict.items():
+        # find corresponding glob_obj
         glob_key = glob_name
         if '[' in glob_key:
             glob_key = glob_key[:glob_key.find('[')]  # an array element -> array name
@@ -236,14 +237,24 @@ def trace_check_glob_correct(wasm_glob_trace_dict: dict, clang_glob_trace_dict: 
             if obj["DW_AT_name"] == '("{}")'.format(glob_key):
                 break
         assert obj["DW_AT_name"] == '("{}")'.format(glob_key)
-        if '*' in obj["DW_AT_type"]:  # TODO: currently we ignore all pointers
-            continue
 
         clang_trace = clang_glob_trace_dict[glob_name]
+        if '*' in obj["DW_AT_type"]:
+            # for pointers: using PtrItem
+            glob_trace_backup = glob_trace
+            glob_trace = []
+            for v in glob_trace_backup:
+                glob_trace.append(lcs.PtrItem(ptr_name=glob_name, ptr_value=v))
+
+            clang_trace_backup = clang_trace
+            clang_trace = []
+            for v in clang_trace_backup:
+                clang_trace.append(lcs.PtrItem(ptr_name=glob_name, ptr_value=v))
+
         if glob_trace[-1] != clang_trace[-1]:
             inconsistent_list.append(glob_name)
-            print('glob trace inconsistency founded.')
-            print('glob_name: {}, wasm_last_write: {}, clang_last_write: {}'.format(glob_name, glob_trace[-1], clang_trace[-1]))
+            print('>Glob trace inconsistency founded.')
+            print('\tglob_name: {}, wasm_last_write: {}, clang_last_write: {}'.format(glob_name, glob_trace[-1], clang_trace[-1]))
 
     # Case 2: missing global writes
     for glob_name, glob_trace in clang_glob_trace_dict.items():
@@ -258,8 +269,8 @@ def trace_check_glob_correct(wasm_glob_trace_dict: dict, clang_glob_trace_dict: 
                     break
             if obj["DW_AT_name"] == '("{}")'.format(glob_key):  # exist
                 inconsistent_list.append(glob_name)
-                print('missing glob trace founded.')
-                print('glob_name: {}'.format(glob_name))
+                print('>Missing glob trace founded.')
+                print('\tglob_name: {}'.format(glob_name))
     return inconsistent_list
 
 
@@ -275,18 +286,28 @@ def trace_check_glob_perf(wasm_glob_trace_dict: dict, clang_glob_trace_dict: dic
             if obj["DW_AT_name"] == '("{}")'.format(glob_key):
                 break
         assert obj["DW_AT_name"] == '("{}")'.format(glob_key)
-        if '*' in obj["DW_AT_type"]:  # TODO: currently we ignore all pointers
-            continue
 
         clang_trace = clang_glob_trace_dict[glob_name]
+        if '*' in obj["DW_AT_type"]:
+            # for pointers: using PtrItem
+            glob_trace_backup = glob_trace
+            glob_trace = []
+            for v in glob_trace_backup:
+                glob_trace.append(lcs.PtrItem(ptr_name=glob_name, ptr_value=v))
+
+            clang_trace_backup = clang_trace
+            clang_trace = []
+            for v in clang_trace_backup:
+                clang_trace.append(lcs.PtrItem(ptr_name=glob_name, ptr_value=v))
+
         lcs_trace = lcs.lcs(clang_trace, glob_trace)
         if len(glob_trace) != len(lcs_trace):
             inconsistent_list.append(glob_name)
             if glob_trace[-1] == clang_trace[-1]:
-                print('glob trace performance inconsistency founded.')
+                print('>Glob trace performance inconsistency founded.')
             else:
-                print('glob trace correctness inconsistency founded.')
-            print('glob_name: {},'.format(glob_name), end=' ')
+                print('>Glob trace correctness inconsistency founded.')
+            print('\tglob_name: {},'.format(glob_name), end=' ')
             for i in range(len(glob_trace)):
                 if i not in lcs_trace:
                     print('write_index: {}, write_value: {},'.format(i, glob_trace[i]), end=' ')
@@ -319,11 +340,11 @@ def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: 
         # Here, the assumption would be: function calls exist in wasm trace should also exist in clang trace
         func_item_trace = []
         for item in func_trace:
-            func_item_trace.append(lcs.FuncItem(item_type=item[0], item_values=item[1], pointer_flags=pointer_flags))
+            func_item_trace.append(lcs.FuncItem(func_name=func_name, item_type=item[0], item_values=item[1], pointer_flags=pointer_flags))
 
         clang_item_trace = []
         for item in clang_trace:
-            clang_item_trace.append(lcs.FuncItem(item_type=item[0], item_values=item[1], pointer_flags=pointer_flags))
+            clang_item_trace.append(lcs.FuncItem(func_name=func_name, item_type=item[0], item_values=item[1], pointer_flags=pointer_flags))
 
         for i in range(len(func_item_trace)):
             match_flag = False
@@ -333,8 +354,8 @@ def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: 
                     break
             if not match_flag:
                 inconsistent_list.append(func_name)
-                print('func trace inconsistency founded.')
-                print('func_name: {}, wasm_item_index: {}, item_type: {}, item_values: {}'.format(
+                print('>Func trace inconsistency founded.')
+                print('\tfunc_name: {}, wasm_item_index: {}, item_type: {}, item_values: {}'.format(
                        func_name, i, func_item_trace[i].type, func_item_trace[i].values))
     return inconsistent_list
 
@@ -358,7 +379,7 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
                 pointer_flags.append(False)
 
         if func_name not in clang_func_trace_dict:
-            print('func trace inconsistency founded.')
+            print('>Func trace inconsistency founded.')
             print('{} could be optimized or inlined.'.format(func_name))
             inconsistent_list.append(func_name)
             continue
@@ -369,17 +390,17 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
         # assert len(clang_trace) == len(func_trace), "error: inconsistent length of function call.\nIs this possible?"
         func_item_trace = []
         for item in func_trace:
-            func_item_trace.append(lcs.FuncItem(item_type=item[0], item_values=item[1], pointer_flags=pointer_flags))
+            func_item_trace.append(lcs.FuncItem(func_name=func_name, item_type=item[0], item_values=item[1], pointer_flags=pointer_flags))
 
         clang_item_trace = []
         for item in clang_trace:
-            clang_item_trace.append(lcs.FuncItem(item_type=item[0], item_values=item[1], pointer_flags=pointer_flags))
+            clang_item_trace.append(lcs.FuncItem(func_name=func_name, item_type=item[0], item_values=item[1], pointer_flags=pointer_flags))
 
         lcs_item_trace = lcs.lcs(clang_item_trace, func_item_trace)
         if len(lcs_item_trace) != len(func_item_trace):
             inconsistent_list.append(func_name)
-            print('func trace inconsistency founded.')
-            print('func_name: {},'.format(func_name), end=' ')
+            print('>Func trace inconsistency founded.')
+            print('\tfunc_name: {},'.format(func_name), end=' ')
             for i in range(len(func_item_trace)):
                 if i not in lcs_item_trace:
                     print('item_index: {}, item_type: {}'.format(i, func_trace[i][0]), end=' ')
@@ -413,6 +434,7 @@ def trace_check(c_src_path: str):
     wat_path = wasm_path[:-5] + '.wat'
     mapping_dict, wasm_objs_dict, clang_objs_dict = pointed_objs.get_pointed_objs_mapping(c_src_path, elf_path, wat_path)
     lcs.FuncItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
+    lcs.PtrItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
 
     # trace consistency check
     glob_correct_inconsistent_list = \

@@ -2,7 +2,39 @@ import os
 import sys
 
 
+class PtrItem:
+    """ Write to global pointers """
+
+    mapping_dict = None
+    wasm_objs_dict = None
+    clang_objs_dict = None
+
+    @staticmethod
+    def set_dict(mapping_dict: dict, wasm_objs_dict: dict, clang_objs_dict: dict) -> None:
+        PtrItem.mapping_dict = mapping_dict
+        PtrItem.wasm_objs_dict = wasm_objs_dict
+        PtrItem.clang_objs_dict = clang_objs_dict
+
+    def __init__(self, ptr_name: str, ptr_value):
+        self.ptr_name = ptr_name
+        self.value = ptr_value
+
+    def __eq__(self, other):
+        if self.value in PtrItem.wasm_objs_dict or self.value in PtrItem.clang_objs_dict:
+            if other.value in PtrItem.wasm_objs_dict or other.value in PtrItem.clang_objs_dict:
+                if (self.value, other.value) not in PtrItem.mapping_dict:
+                    return False  # point to different objs
+            else:
+                return False  # other.value points to unknown obj
+        elif other.value in PtrItem.wasm_objs_dict or other.value in PtrItem.clang_objs_dict:
+            return False  # self.value points to unknown obj
+        else:
+            pass  # both point to unknown objs
+        return True
+
+
 class FuncItem:
+    """ Function call/return """
     mapping_dict = None
     wasm_objs_dict = None
     clang_objs_dict = None
@@ -13,8 +45,9 @@ class FuncItem:
         FuncItem.wasm_objs_dict = wasm_objs_dict
         FuncItem.clang_objs_dict = clang_objs_dict
 
-    def __init__(self, item_type='P', item_values=[], pointer_flags=[]):
+    def __init__(self, func_name: str, item_type='P', item_values=[], pointer_flags=[]):
         assert len(item_values) == len(pointer_flags)
+        self.func_name = func_name
         self.type = item_type
         self.values = item_values
         self.pointer_flags = pointer_flags
@@ -34,9 +67,9 @@ class FuncItem:
                         if (self.values[i], other.values[i]) not in FuncItem.mapping_dict:
                             return False  # point to different objs
                     else:
-                        return False  # other.values[i] does not point to unknown obj
+                        return False  # other.values[i] points to unknown obj
                 elif other.values[i] in FuncItem.wasm_objs_dict or other.values[i] in FuncItem.clang_objs_dict:
-                    return False  # self.values[i] does not point to unknown obj
+                    return False  # self.values[i] points to unknown obj
                 else:
                     pass  # both point to unknown objs
         return True
