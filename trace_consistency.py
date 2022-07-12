@@ -225,6 +225,8 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
 def trace_check_glob_correct(wasm_glob_trace_dict: dict, clang_glob_trace_dict: dict, wasm_globs: list):
     print('\nChecking correctness (global writes) ...')
     inconsistent_list = []
+
+    # Case 1: inconsistent last write
     for glob_name, glob_trace in wasm_glob_trace_dict.items():
         glob_key = glob_name
         if '[' in glob_key:
@@ -242,6 +244,22 @@ def trace_check_glob_correct(wasm_glob_trace_dict: dict, clang_glob_trace_dict: 
             inconsistent_list.append(glob_name)
             print('glob trace inconsistency founded.')
             print('glob_name: {}, wasm_last_write: {}, clang_last_write: {}'.format(glob_name, glob_trace[-1], clang_trace[-1]))
+
+    # Case 2: missing global writes
+    for glob_name, glob_trace in clang_glob_trace_dict.items():
+        if glob_name not in wasm_glob_trace_dict:
+            glob_key = glob_name
+            if '[' in glob_key:
+                glob_key = glob_key[:glob_key.find('[')]  # an array element -> array name
+            # exists in wasm globs?
+            for obj in wasm_globs:
+                obj = obj[1]
+                if obj["DW_AT_name"] == '("{}")'.format(glob_key):
+                    break
+            if obj["DW_AT_name"] == '("{}")'.format(glob_key):  # exist
+                inconsistent_list.append(glob_name)
+                print('missing glob trace founded.')
+                print('glob_name: {}'.format(glob_name))
     return inconsistent_list
 
 
@@ -395,19 +413,22 @@ def trace_check(c_src_path: str):
     wat_path = wasm_path[:-5] + '.wat'
     mapping_dict, wasm_objs_dict, clang_objs_dict = pointed_objs.get_pointed_objs_mapping(c_src_path, elf_path, wat_path)
     lcs.FuncItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
+
     # trace consistency check
     glob_correct_inconsistent_list = \
         trace_check_glob_correct(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs)
-    glob_perf_inconsistent_list = \
-        trace_check_glob_perf(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs)
     func_correct_inconsistent_list = \
         trace_check_func_correct(wasm_func_trace_dict, clang_func_trace_dict, wasm_func_objs, wasm_param_dict)
+
+    print(glob_correct_inconsistent_list)
+    print(func_correct_inconsistent_list)
+
+    glob_perf_inconsistent_list = \
+        trace_check_glob_perf(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs)
     func_perf_inconsistent_list = \
         trace_check_func_perf(wasm_func_trace_dict, clang_func_trace_dict, wasm_func_objs, wasm_param_dict)
 
-    print(glob_correct_inconsistent_list)
     print(glob_perf_inconsistent_list)
-    print(func_correct_inconsistent_list)
     print(func_perf_inconsistent_list)
 
 
