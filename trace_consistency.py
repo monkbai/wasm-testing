@@ -4,6 +4,7 @@ import sys
 
 import lcs
 import profile
+import pointed_objs
 import wasm_instrument
 import pin_instrument
 
@@ -83,6 +84,7 @@ def get_name_and_addr(glob_obj: dict):
 def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: list, wasm_param_dict: dict):
     func_trace_dict = dict()
     glob_trace_dict = dict()
+    clear_glob_array_dict()
 
     with open(trace_path, 'r') as f:
         lines = f.readlines()
@@ -154,6 +156,7 @@ def get_func_obj(func_addr: int, func_objs: list):
 def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: list, clang_param_dict: dict):
     func_trace_dict = dict()
     glob_trace_dict = dict()
+    clear_glob_array_dict()
 
     with open(trace_path, 'r') as f:
         lines = f.readlines()
@@ -282,14 +285,14 @@ def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: 
             continue  # ignore main function, as the return value is not captured by pin tool (tracer)
 
         func_key = '("{}")'.format(func_name)
-        check_flags = []
+        pointer_flags = []
         params = wasm_param_dict[func_key]
         for param in params:
             if '*' in param["DW_AT_type"] or '[' in param["DW_AT_type"]:
                 # TODO: currently ignore all pointer/array arguemnts
-                check_flags.append(False)
+                pointer_flags.append(True)
             else:
-                check_flags.append(True)
+                pointer_flags.append(False)
 
         clang_trace = clang_func_trace_dict[func_name]
 
@@ -298,11 +301,11 @@ def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: 
         # Here, the assumption would be: function calls exist in wasm trace should also exist in clang trace
         func_item_trace = []
         for item in func_trace:
-            func_item_trace.append(lcs.FuncItem(item_type=item[0], item_values=item[1], check_flags=check_flags))
+            func_item_trace.append(lcs.FuncItem(item_type=item[0], item_values=item[1], pointer_flags=pointer_flags))
 
         clang_item_trace = []
         for item in clang_trace:
-            clang_item_trace.append(lcs.FuncItem(item_type=item[0], item_values=item[1], check_flags=check_flags))
+            clang_item_trace.append(lcs.FuncItem(item_type=item[0], item_values=item[1], pointer_flags=pointer_flags))
 
         for i in range(len(func_item_trace)):
             match_flag = False
@@ -313,8 +316,8 @@ def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: 
             if not match_flag:
                 inconsistent_list.append(func_name)
                 print('func trace inconsistency founded.')
-                print('func_name: {}, wasm_item_index: {}, item_type: {}'.format(
-                       func_name, i, func_item_trace[i].type))
+                print('func_name: {}, wasm_item_index: {}, item_type: {}, item_values: {}'.format(
+                       func_name, i, func_item_trace[i].type, func_item_trace[i].values))
     return inconsistent_list
 
 
@@ -327,14 +330,14 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
             continue  # ignore main function, as the return value is not captured by pin tool (tracer)
 
         func_key = '("{}")'.format(func_name)
-        check_flags = []
+        pointer_flags = []
         params = wasm_param_dict[func_key]
         for param in params:
             if '*' in param["DW_AT_type"] or '[' in param["DW_AT_type"]:
                 # TODO: currently ignore all pointer/array arguemnts
-                check_flags.append(False)
+                pointer_flags.append(True)
             else:
-                check_flags.append(True)
+                pointer_flags.append(False)
 
         if func_name not in clang_func_trace_dict:
             print('func trace inconsistency founded.')
@@ -348,11 +351,11 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
         # assert len(clang_trace) == len(func_trace), "error: inconsistent length of function call.\nIs this possible?"
         func_item_trace = []
         for item in func_trace:
-            func_item_trace.append(lcs.FuncItem(item_type=item[0], item_values=item[1], check_flags=check_flags))
+            func_item_trace.append(lcs.FuncItem(item_type=item[0], item_values=item[1], pointer_flags=pointer_flags))
 
         clang_item_trace = []
         for item in clang_trace:
-            clang_item_trace.append(lcs.FuncItem(item_type=item[0], item_values=item[1], check_flags=check_flags))
+            clang_item_trace.append(lcs.FuncItem(item_type=item[0], item_values=item[1], pointer_flags=pointer_flags))
 
         lcs_item_trace = lcs.lcs(clang_item_trace, func_item_trace)
         if len(lcs_item_trace) != len(func_item_trace):
@@ -388,7 +391,11 @@ def trace_check(c_src_path: str):
     clang_glob_trace_dict, clang_func_trace_dict = generalize_pin_trace(clang_raw_trace_path,
                                                                         clang_globs, clang_func_objs, clang_param_dict)
 
-    # TODO: consistency check
+    # Before checking
+    wat_path = wasm_path[:-5] + '.wat'
+    mapping_dict, wasm_objs_dict, clang_objs_dict = pointed_objs.get_pointed_objs_mapping(c_src_path, elf_path, wat_path)
+    lcs.FuncItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
+    # trace consistency check
     glob_correct_inconsistent_list = \
         trace_check_glob_correct(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs)
     glob_perf_inconsistent_list = \

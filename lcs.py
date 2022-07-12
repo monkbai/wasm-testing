@@ -3,20 +3,42 @@ import sys
 
 
 class FuncItem:
+    mapping_dict = None
+    wasm_objs_dict = None
+    clang_objs_dict = None
 
-    def __init__(self, item_type='P', item_values=[], check_flags=[]):
-        assert len(item_values) == len(check_flags)
+    @staticmethod
+    def set_dict(mapping_dict: dict, wasm_objs_dict: dict, clang_objs_dict: dict) -> None:
+        FuncItem.mapping_dict = mapping_dict
+        FuncItem.wasm_objs_dict = wasm_objs_dict
+        FuncItem.clang_objs_dict = clang_objs_dict
+
+    def __init__(self, item_type='P', item_values=[], pointer_flags=[]):
+        assert len(item_values) == len(pointer_flags)
         self.type = item_type
         self.values = item_values
-        self.check = check_flags
+        self.pointer_flags = pointer_flags
 
     def __eq__(self, other):
         if self.type != other.type:
             return False
-        for i in range(len(self.check)):
-            assert self.check[i] == other.check[i]
-            if self.check[i] and self.values[i] != other.values[i]:
-                return False
+        for i in range(len(self.pointer_flags)):
+            assert self.pointer_flags[i] == other.pointer_flags[i]
+
+            if not self.pointer_flags[i]:  # normal int values
+                if self.values[i] != other.values[i]:
+                    return False
+            elif self.pointer_flags[i]:  # pointer values
+                if self.values[i] in FuncItem.wasm_objs_dict or self.values[i] in FuncItem.clang_objs_dict:
+                    if other.values[i] in FuncItem.wasm_objs_dict or other.values[i] in FuncItem.clang_objs_dict:
+                        if (self.values[i], other.values[i]) not in FuncItem.mapping_dict:
+                            return False  # point to different objs
+                    else:
+                        return False  # other.values[i] does not point to unknown obj
+                elif other.values[i] in FuncItem.wasm_objs_dict or other.values[i] in FuncItem.clang_objs_dict:
+                    return False  # self.values[i] does not point to unknown obj
+                else:
+                    pass  # both point to unknown objs
         return True
 
 

@@ -5,6 +5,12 @@ import re
 import os
 
 import utils
+import profile
+import trace_consistency
+
+# ==================
+# Get .rodata string mappings
+# ==================
 
 
 def get_elf_strs(elf_path: str):
@@ -69,10 +75,66 @@ def get_str_mapping(clang_elf_path: str, wat_path: str):
     return str_mapping
 
 
+# ==================
+# Get global variable mappings
+# ==================
+
+def get_glob_mapping(c_src_path: str):
+    globs_mapping = []
+
+    wasm_globs, clang_globs = profile.collect_glob_vars(c_src_path)
+
+    wasm_globs_dict = dict()
+    trace_consistency.clear_glob_array_dict()
+    for obj in wasm_globs:
+        obj = obj[1]
+        obj_list, (min_addr, max_addr) = trace_consistency.get_name_and_addr(obj)
+        for name, addr in obj_list:
+            wasm_globs_dict[name] = addr
+
+    clang_globs_dict = dict()
+    trace_consistency.clear_glob_array_dict()
+    for obj in clang_globs:
+        obj = obj[1]
+        obj_list, (min_addr, max_addr) = trace_consistency.get_name_and_addr(obj)
+        for name, addr in obj_list:
+            clang_globs_dict[name] = addr
+
+    for glob_name, addr in wasm_globs_dict.items():
+        if glob_name in clang_globs_dict:
+            globs_mapping.append((glob_name, addr, clang_globs_dict[glob_name]))
+
+    trace_consistency.clear_glob_array_dict()
+    return globs_mapping
+
+
+# ==================
+# Get global variable mappings
+# ==================
+
+
+def get_pointed_objs_mapping(c_path: str, elf_path: str, wat_path: str):
+    globs_mapping = get_glob_mapping(c_path)
+    str_mapping = get_str_mapping(elf_path, wat_path)
+
+    wasm_objs_dict = dict()
+    clang_objs_dict = dict()
+    mapping_dict = dict()
+
+    mapping_list = globs_mapping + str_mapping
+    for name, wasm_addr, clang_addr in mapping_list:
+        wasm_objs_dict[wasm_addr] = (name, clang_addr)
+        clang_objs_dict[clang_addr] = (name, wasm_addr)
+        mapping_dict[(wasm_addr, clang_addr)] = name
+        mapping_dict[(clang_addr, wasm_addr)] = name
+    return mapping_dict, wasm_objs_dict, clang_objs_dict
+
+
 def main():
+    c_path = "/home/tester/Documents/WebAssembly/wasm-compiler-testing/debug_cases/test1001.c"
     elf_path = "/home/tester/Documents/WebAssembly/wasm-compiler-testing/debug_cases/test1001.out"
     wat_path = "/home/tester/Documents/WebAssembly/wasm-compiler-testing/debug_cases/test1001.wat"
-    print(get_str_mapping(elf_path, wat_path))
+    print(get_pointed_objs_mapping(c_path, elf_path, wat_path))
 
 
 if __name__ == '__main__':

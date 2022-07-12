@@ -177,9 +177,9 @@ def collect_glob_vars(c_src_path: str):
     # print(new_wasm_globs)
     # print(new_clang_globs)
 
-    status, output = utils.cmd("rm {}".format(out_path))
-    status, output = utils.cmd("rm {}".format(wasm_path))
-    status, output = utils.cmd("rm {}".format(js_path))
+    # status, output = utils.cmd("rm {}".format(out_path))
+    # status, output = utils.cmd("rm {}".format(wasm_path))
+    # status, output = utils.cmd("rm {}".format(js_path))
     return new_wasm_globs, new_clang_globs
 
 
@@ -223,6 +223,6 @@ def collect_funcs(c_src_path: str):
 if __name__ == '__main__':
     # get_global_vars("/home/tester/Documents/WebAssembly/examples/test1090_re.c")
 
-    # collect_glob_vars("/home/tester/Documents/WebAssembly/examples/test1090_re.c")
+    collect_glob_vars("/home/tester/Documents/WebAssembly/examples/test1090_re.c")
     collect_funcs("/home/tester/Documents/WebAssembly/examples/test1090_re.c")
 
