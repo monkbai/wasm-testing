@@ -10,6 +10,8 @@ static std::unordered_map<ADDRINT, std::string> str_of_ins_at;
 FILE * trace;
 
 int after_call_flag = 0; // is current instruction after a call
+ADDRINT call_ip = 0;  // ip of the previous call instruction
+std::string call_inst_str = "";  // the instruction string of the previous call instruction
 ADDRINT callee_addr = 0; // callee addr of previous call instruction
 
 // just want hash table
@@ -43,8 +45,8 @@ KNOB<std::string>   KnobParamFile(KNOB_MODE_WRITEONCE,  "pintool",
 VOID RecordInst(VOID * ip)
 {
     std::string ins_str = str_of_ins_at[(ADDRINT)ip];
-    // fprintf(trace,">%p:\t%s\n", ip, ins_str.c_str());  // for debug
-    fprintf(trace,">%p\n", ip);
+    fprintf(trace,"%p: %s\n", ip, ins_str.c_str());  // for debug, provide more informative trace for bug locating
+    // fprintf(trace,">%p\n", ip);
 
     //std::string ins_str = str_of_ins_at[(ADDRINT)ip];
     //fprintf(trace,"%p:\t%s\n", ip, ins_str.c_str());
@@ -69,8 +71,8 @@ VOID RecordMemWrite(VOID * ip, VOID * mem_addr, USIZE mem_size)
         // only instrument target global writes
         return;
     }
-    // std::string ins_str = str_of_ins_at[(ADDRINT)ip];
-    // fprintf(trace,">%p:\t%s\n", ip, ins_str.c_str());  // for debug
+    std::string ins_str = str_of_ins_at[(ADDRINT)ip];
+    fprintf(trace,"%p: %s\n", ip, ins_str.c_str());  // for debug
 
     fprintf(trace,"W: %p: %lu\n", mem_addr, mem_size);
     if (mem_size == 1){
@@ -91,8 +93,9 @@ VOID RecordMemWrite(VOID * ip, VOID * mem_addr, USIZE mem_size)
 }
 
 VOID AfterCall(VOID * ip, ADDRINT rax){
-    // TODO: what if the return value is a pointer
+    // If the return value is a pointer: treat it as int64 and print the pointer value
     if (ret_func_addr.find(callee_addr) != ret_func_addr.end()){  // only print return value of the target functions
+        fprintf(trace,"%p: %s\n", (VOID *)call_ip, call_inst_str.c_str());  // for debug, provide more informative trace for bug locating
         fprintf(trace,">%p R: %p\n", (VOID *)callee_addr, (void *)rax);
     }
 }
@@ -101,7 +104,8 @@ VOID RecordArgs(VOID * ip, ADDRINT rdi, ADDRINT rsi, ADDRINT rdx, ADDRINT rcx, A
     if (func2param.find((uint64_t)ip) == func2param.end()){
         return; // no argument
     }
-    // TODO: what if the argument is a pointer
+    fprintf(trace,">%p\n", ip); // print function start address
+    // If the argument is a pointer: treat it as a int64 and print the pointer value
     // TODO: what if #argument > 6
     ADDRINT args[6] = {rdi, rsi, rdx, rcx, r8, r9};
     uint32_t idx = 0;
@@ -138,11 +142,7 @@ VOID Instruction(INS ins, VOID *v)
     if (func_addr.find(ins_addr) != func_addr.end()){
         // Step 1:
         // instrument function start, print argument values
-        INS_InsertPredicatedCall(
-            ins, IPOINT_BEFORE, (AFUNPTR)RecordInst,
-            IARG_INST_PTR,
-            IARG_END);
-        // TODO: print the arguemnts according to the param_file
+        // RecordArgs: print the arguments according to the param_file
         INS_InsertPredicatedCall(
             ins, IPOINT_BEFORE, (AFUNPTR)RecordArgs,
             IARG_INST_PTR,
@@ -198,6 +198,16 @@ VOID Instruction(INS ins, VOID *v)
     if (INS_IsCall(ins) && INS_IsDirectControlFlow(ins)){
         callee_addr = INS_DirectControlFlowTargetAddress(ins);
         after_call_flag = 1;
+        call_ip = INS_Address(ins);
+        call_inst_str = str_of_ins_at[INS_Address(ins)];
+        if (func_addr.find(callee_addr) != func_addr.end() && func2param.find(callee_addr) != func2param.end()){
+            // the callee would be instrumented with RecordArgs
+            // record the addr and 'call' instruction in advance
+            INS_InsertPredicatedCall(
+                ins, IPOINT_BEFORE, (AFUNPTR)RecordInst,
+                IARG_INST_PTR,
+                IARG_END);
+        }
     }
     else{
         after_call_flag = 0;

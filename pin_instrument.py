@@ -55,11 +55,12 @@ def print_func_arg_size(func_objs: list, param_dict: dict, func_param_file: str)
                 func_addr = int(obj["DW_AT_low_pc"].strip('()'), 16)
 
             if func_name not in param_dict.keys():
-                continue
-            param_list = param_dict[func_name]
+                param_list = []
+            else:
+                param_list = param_dict[func_name]
 
-            if len(param_list) == 0:
-                continue
+            # if len(param_list) == 0:
+            #     continue
 
             f.write(hex(func_addr) + '\n')
             f.write(str(len(param_list)) + '\n')

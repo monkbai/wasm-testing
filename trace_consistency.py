@@ -328,7 +328,9 @@ def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: 
         params = wasm_param_dict[func_key]
         for param in params:
             if '*' in param["DW_AT_type"] or '[' in param["DW_AT_type"]:
-                # TODO: currently ignore all pointer/array arguemnts
+                # TODO: What array argument looks like?
+                if '[' in param["DW_AT_type"]:
+                    print("debug: array argument")
                 pointer_flags.append(True)
             else:
                 pointer_flags.append(False)
@@ -373,7 +375,9 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
         params = wasm_param_dict[func_key]
         for param in params:
             if '*' in param["DW_AT_type"] or '[' in param["DW_AT_type"]:
-                # TODO: currently ignore all pointer/array arguemnts
+                # TODO: What array argument looks like?
+                if '[' in param["DW_AT_type"]:
+                    print("debug: array argument")
                 pointer_flags.append(True)
             else:
                 pointer_flags.append(False)
@@ -435,7 +439,7 @@ def trace_check(c_src_path: str):
     mapping_dict, wasm_objs_dict, clang_objs_dict = pointed_objs.get_pointed_objs_mapping(c_src_path, elf_path, wat_path)
     lcs.FuncItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
     lcs.PtrItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
-
+    # TODO: update instrumentation, and provided more information to locate bugs
     # trace consistency check
     glob_correct_inconsistent_list = \
         trace_check_glob_correct(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs)
