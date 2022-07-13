@@ -21,13 +21,17 @@ def get_elf_strs(elf_path: str):
         seg_size = int(mat.group(1), 16)
         seg_base = int(mat.group(2), 16)
 
-    status, output = utils.cmd("readelf -p .rodata {}".format(elf_path))
-    if it := re.finditer(r"\[\s+(\w+)]\s+(.+)\n", output):
-        for mat in it:
-            offset = int(mat.group(1), 16)
-            str_value = mat.group(2)
-            str_value = str_value.replace('\\n', '\n')
-            str_dict[str_value] = seg_base + offset
+    status, output = utils.cmd("readelf -W -p .rodata {} > {}".format(elf_path, 'rodata.tmp'))
+    with open('rodata.tmp', 'r', encoding='utf-8', errors='ignore') as f:
+        try:
+            while line := f.readline():
+                if mat := re.search(r"\[\s+(\w+)]\s+(.+)\n", line):
+                    offset = int(mat.group(1), 16)
+                    str_value = mat.group(2)
+                    str_value = str_value.replace('\\n', '\n')
+                    str_dict[str_value] = seg_base + offset
+        except UnicodeDecodeError as err:
+            pass
     return str_dict
 
 
