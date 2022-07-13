@@ -113,7 +113,27 @@ def lcs(list1: list, list2: list):
         else:
             assert False
 
-    return lcs_index
+    # get the LCS (index of list1)
+    lcs_index1 = []
+    i = n1
+    j = n2
+    while i > 0 and j > 0:
+        # print('i {} j {}'.format(i, j))
+        if (dp[i - 1][j - 1] + 1) == dp[i][j] and dp[i - 1][j] != dp[i][j] and dp[i][j - 1] != dp[i][j]:
+            if list1[i - 1] == list2[j - 1]:
+                lcs_index1.insert(0, i - 1)
+            # else:
+            #     print(list1[i-1], list2[j-1])
+            i -= 1
+            j -= 1
+        elif dp[i - 1][j] == dp[i][j]:
+            i -= 1
+        elif dp[i][j - 1] == dp[i][j]:
+            j -= 1
+        else:
+            assert False
+
+    return lcs_index, lcs_index1
 
 
 if __name__ == '__main__':
