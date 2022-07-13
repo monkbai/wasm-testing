@@ -44,6 +44,15 @@ def wat2wasm(wasm_path: str, wat_txt: str):
 
 # ==========================
 
+instrument_id = 0
+callee_names_list = []
+
+
+def get_instrument_id():
+    global instrument_id
+    instrument_id += 1
+    return instrument_id - 1
+
 
 def get_type_id(type_sec: str):
     idx = type_sec.rfind("  (type (;")
@@ -77,10 +86,10 @@ def add_data_str(func_sec: str):
     next_offset = data_offset + appro_len
     idx = func_sec.rfind(')')
     func_sec = func_sec[:idx] + \
-               wasm_code.wasm_data_str.format(next_offset, next_offset+12, next_offset+24, next_offset+36, next_offset+48, next_offset+60) + \
+               wasm_code.wasm_data_str.format(next_offset, next_offset+12, next_offset+24, next_offset+36, next_offset+48, next_offset+60, next_offset+72) + \
                func_sec[idx:]
 
-    return func_sec, [next_offset, next_offset+12, next_offset+24, next_offset+36, next_offset+48, next_offset+60]
+    return func_sec, [next_offset, next_offset+12, next_offset+24, next_offset+36, next_offset+48, next_offset+60, next_offset+72]
 
 
 def add_data_str2(func_sec: str, func_objs: list):
@@ -129,6 +138,7 @@ def add_utility_funcs(type_sec: str, type_ids: list, data_offsets: list):
     type_sec += wasm_code.wasm_myprint_i64p.format(type_ids[2], data_offsets[3])
     type_sec += wasm_code.wasm_myprint_i64v.format(type_ids[2], data_offsets[4])
     type_sec += wasm_code.wasm_myprint_i32r.format(type_ids[3], data_offsets[5])
+    type_sec += wasm_code.wasm_myprint_i32id.format(type_ids[1], data_offsets[6])
     type_sec += wasm_code.wasm_myprint_call.format(type_ids[1])
 
     # store functions
@@ -159,7 +169,8 @@ def _instrument_return(func_txt: str, func_name: str, func_name2offset: dict):
 
     idx = func_txt.rfind(')')
     if r_type == "i32":
-        l = prefix_space + "i32.const {}\n".format(func_name2offset[func_name]) + prefix_space + "call $myprint_call\n"
+        l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
+        l += prefix_space + "i32.const {}\n".format(func_name2offset[func_name]) + prefix_space + "call $myprint_call\n"
         l += prefix_space + "call $myprint_i32r"
         func_txt = func_txt[:idx] + '\n' + l + func_txt[idx:]
     elif r_num > 0:
@@ -177,19 +188,32 @@ def _instrument_func_line(func_txt: str):
         prefix_space = ' ' * lines[idx].find(l)
 
         if l == 'i32.store':
-            l = prefix_space + "call $instrument_i32store  ;; i32.store"
+            l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
+            l += prefix_space + "call $instrument_i32store  ;; i32.store"
             new_func_txt += l + '\n'
             idx += 1
             continue
         elif l == 'i64.store':
-            l = prefix_space + "call $instrument_i64store  ;; i64.store"
+            l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
+            l += prefix_space + "call $instrument_i64store  ;; i64.store"
             new_func_txt += l + '\n'
             idx += 1
             continue
         elif mat := re.match(r'i32\.store offset=(\d+)', l):
             addr_offset = int(mat.group(1))
-            l = prefix_space + "i32.const {}\n".format(addr_offset) + prefix_space + "call $instrument_i32store_off  ;; " + l
+            l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
+            l += prefix_space + "i32.const {}\n".format(addr_offset) + prefix_space + "call $instrument_i32store_off  ;; " + lines[idx].strip()
             new_func_txt += l + '\n'
+            idx += 1
+            continue
+        elif mat := re.match(r'call\s\$(\w+)', l):
+            callee_name = mat.group(1)
+            if callee_name in callee_names_list:
+                l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
+                l += lines[idx]
+                new_func_txt += l + '\n'
+            else:
+                new_func_txt += lines[idx] + '\n'
             idx += 1
             continue
         new_func_txt += lines[idx] + '\n'
@@ -331,6 +355,11 @@ def instrument_func_call(wat_txt, func_objs: list, param_dict: dict):
 
 
 def instrument(wasm_path: str, glob_objs: list, func_objs: list, param_dict: dict, new_wasm_path: str):
+    global callee_names_list
+    for obj in func_objs:
+        obj = obj[1]
+        callee_names_list.append(obj["DW_AT_name"].strip('()').strip('"'))
+
     wat_txt = wasm2wat(wasm_path)
 
     new_wat_txt = instrument_glob_write(wat_txt, func_objs)

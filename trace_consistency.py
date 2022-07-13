@@ -86,12 +86,15 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
     glob_trace_dict = dict()
     clear_glob_array_dict()
 
+    aux_info = ""
     with open(trace_path, 'r') as f:
         lines = f.readlines()
         idx = 0
         while idx < len(lines):
             l = lines[idx]
-            if l.startswith('$') and 'R:' not in l:  # func call
+            if l.startswith('ID:'):
+                aux_info = l
+            elif l.startswith('$') and 'R:' not in l:  # func call
                 func_name = l.strip().strip('$')
                 func_key = '("{}")'.format(func_name)
                 param_list = wasm_param_dict[func_key] if func_key in wasm_param_dict.keys() else []
@@ -103,16 +106,20 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
                     arg_value = int(l[l.find(':')+1:].strip(), 16)
                     arg_list.append(arg_value)
                 if func_name in func_trace_dict.keys():
-                    func_trace_dict[func_name].append(('P', arg_list))
+                    func_trace_dict[func_name].append(('P', arg_list, aux_info))
+                    aux_info = ""
                 else:
-                    func_trace_dict[func_name] = [('P', arg_list)]
+                    func_trace_dict[func_name] = [('P', arg_list, aux_info)]
+                    aux_info = ""
             elif l.startswith('$') and 'R:' in l:  # func return
                 func_name = l[:l.find('R:')].strip('$ ')
                 ret_value = int(l[l.find(':')+1:].strip(), 16)
                 if func_name in func_trace_dict.keys():
-                    func_trace_dict[func_name].append(('R', [ret_value]))
+                    func_trace_dict[func_name].append(('R', [ret_value], aux_info))
+                    aux_info = ""
                 else:
-                    func_trace_dict[func_name] = [('R', [ret_value])]
+                    func_trace_dict[func_name] = [('R', [ret_value], aux_info)]
+                    aux_info = ""
             elif l.startswith('W: '):  # globals write
                 write_addr = int(l[l.find(':')+1:].strip(), 16)
                 idx += 1
@@ -133,9 +140,11 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
                                 break
                 if len(glob_name) != 0:
                     if glob_name in glob_trace_dict:
-                        glob_trace_dict[glob_name].append(write_value)
+                        glob_trace_dict[glob_name].append((write_value, aux_info))
+                        aux_info = ""
                     else:
-                        glob_trace_dict[glob_name] = [write_value]
+                        glob_trace_dict[glob_name] = [(write_value, aux_info)]
+                        aux_info = ""
 
             elif l.startswith('P: ') or l.startswith('V: '):
                 assert False, 'error during parsing raw wasm trace.'
@@ -239,6 +248,7 @@ def trace_check_glob_correct(wasm_glob_trace_dict: dict, clang_glob_trace_dict: 
 
     # Case 1: inconsistent last write
     for glob_name, glob_trace in wasm_glob_trace_dict.items():
+        glob_trace = [v[0] for v in glob_trace]
         # find corresponding glob_obj
         glob_key = glob_name
         if '[' in glob_key:
@@ -290,6 +300,7 @@ def trace_check_glob_perf(wasm_glob_trace_dict: dict, clang_glob_trace_dict: dic
     print('\nChecking performance (global writes) ...')
     inconsistent_list = []
     for glob_name, glob_trace in wasm_glob_trace_dict.items():
+        glob_trace = [v[0] for v in glob_trace]
         glob_key = glob_name
         if '[' in glob_key:
             glob_key = glob_key[:glob_key.find('[')]
@@ -355,6 +366,7 @@ def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: 
         # Here, the assumption would be: function calls exist in wasm trace should also exist in clang trace
         func_item_trace = []
         for item in func_trace:
+            # item[2] -> auxiliary information
             func_item_trace.append(lcs.FuncItem(func_name=func_name, item_type=item[0], item_values=item[1], pointer_flags=pointer_flags))
 
         clang_item_trace = []
@@ -408,6 +420,7 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
         # assert len(clang_trace) == len(func_trace), "error: inconsistent length of function call.\nIs this possible?"
         func_item_trace = []
         for item in func_trace:
+            # item[2] -> auxiliary information
             func_item_trace.append(lcs.FuncItem(func_name=func_name, item_type=item[0], item_values=item[1], pointer_flags=pointer_flags))
 
         clang_item_trace = []
@@ -481,11 +494,12 @@ def main():
 
 
 def test(debug_dir="./debug_cases"):
+    skip_list = ["1001.c"]
     debug_dir = os.path.abspath(debug_dir)
     files = os.listdir(debug_dir)
     files.sort()
     for f in files:
-        if f.endswith('.c'):
+        if f.endswith('.c') and f not in skip_list:
             f = os.path.join(debug_dir, f)
             trace_check(f)
 

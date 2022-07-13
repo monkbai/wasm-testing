@@ -79,6 +79,30 @@ wasm_myprint_i32p = """
     global.set $__stack_pointer)
 """
 
+wasm_myprint_i32id = """
+  (func $myprint_i32id (type {}) (param i32)
+    (local i32)
+    global.get $__stack_pointer
+    i32.const 16
+    i32.sub
+    local.tee 1
+    global.set $__stack_pointer  ;; lift stack pointer
+
+    local.get 1
+    local.get 0
+    i32.store ;; store address in stack mem
+
+    i32.const {}
+    local.get 1
+    call $iprintf  ;; print the argument
+    drop
+
+    local.get 1
+    i32.const 16  ;; restore stack pointer
+    i32.add
+    global.set $__stack_pointer)
+"""
+
 wasm_myprint_i64p = """
   (func $myprint_i64p (type {}) (param i64)
     (local i32)
@@ -217,7 +241,8 @@ wasm_data_str = """
   (data $.str.p32 (i32.const {}) "P: 0x%lx\\0a\\00")
   (data $.str.p64 (i32.const {}) "P: 0x%llx\\0a\\00")
   (data $.str.v64 (i32.const {}) "V: 0x%llx\\0a\\00")
-  (data $.str.r32 (i32.const {}) "R: 0x%lx\\0a\\00")"""
+  (data $.str.r32 (i32.const {}) "R: 0x%lx\\0a\\00")
+  (data $.str.id32 (i32.const {}) "ID: %d\\0a\\00")"""
 
 wasm_func_names_str = """
   (data $.str.{} (i32.const {}) "${}\\0a\\00")"""
