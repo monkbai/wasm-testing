@@ -377,11 +377,13 @@ def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: 
             # item[2] -> auxiliary information
             clang_item_trace.append(lcs.FuncItem(func_name=func_name, item_type=item[0], item_values=item[1], pointer_flags=pointer_flags))
 
+        clang_idx = 0
         for i in range(len(func_item_trace)):
             match_flag = False
-            for j in range(len(clang_item_trace)):
+            for j in range(clang_idx, len(clang_item_trace)):
                 if func_item_trace[i] == clang_item_trace[j]:
                     match_flag = True
+                    clang_idx = j + 1
                     break
             if not match_flag:
                 inconsistent_list.append(func_name)
