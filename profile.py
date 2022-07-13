@@ -213,9 +213,9 @@ def collect_funcs(c_src_path: str):
                     break
             continue
 
-    status, output = utils.cmd("rm {}".format(out_path))
-    status, output = utils.cmd("rm {}".format(wasm_path))
-    status, output = utils.cmd("rm {}".format(js_path))
+    # status, output = utils.cmd("rm {}".format(out_path))
+    # status, output = utils.cmd("rm {}".format(wasm_path))
+    # status, output = utils.cmd("rm {}".format(js_path))
 
     return (new_wasm_funcs, wasm_param_dict, wasm_func_names_list), (new_clang_funcs, clang_param_dict, clang_func_names_list)
 

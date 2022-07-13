@@ -24,7 +24,8 @@ def get_name_and_addr(glob_obj: dict):
     obj = glob_obj
     obj_name = obj['DW_AT_name'].strip('()').strip('"')
     obj_addr = obj["DW_AT_location"]
-    obj_addr = int(obj_addr.strip('()').split(' ')[1], 16)
+    obj_addr = int(re.search(r"DW_OP_addr (\w+)", obj_addr).group(1), 16)
+    # obj_addr = int(obj_addr.strip('()').split(' ')[1], 16)
     obj_type = obj["DW_AT_type"]
 
     obj_key = obj["DW_AT_name"] + obj["DW_AT_location"]
@@ -34,6 +35,8 @@ def get_name_and_addr(glob_obj: dict):
     if '[' in obj_type:  # array, return address list
         obj_list = []
         obj_type = obj["DW_AT_type"]
+        obj_type = obj_type.replace('const ', '')
+        obj_type = obj_type.replace('volatile ', '')
         if mat := re.search(r'\(0x[\da-fA-F]+\s"(\w+)((\[\d+])+)"\)', obj_type):
             obj_type = mat.group(1)
             array_dim = mat.group(2)
@@ -494,12 +497,14 @@ def main():
 
 
 def test(debug_dir="./debug_cases"):
-    skip_list = ["1001.c"]
+    skip_list = ["1001.c", "1001_re.c"]
     debug_dir = os.path.abspath(debug_dir)
     files = os.listdir(debug_dir)
     files.sort()
     for f in files:
-        if f.endswith('.c') and f not in skip_list:
+        if f.endswith('.c'):
+            if [True if v in f else False for v in skip_list].count(True) > 0:
+                continue
             f = os.path.join(debug_dir, f)
             trace_check(f)
 

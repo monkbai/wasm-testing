@@ -14,6 +14,7 @@ def print_glob_addr(glob_objs:list, glob_addr_file: str):
             obj = obj[1]
             addr = int(obj["DW_AT_location"].strip('()').split(' ')[1], 16)
             var_type = obj["DW_AT_type"]
+            var_type = var_type.replace('volatile ', '')
             if mat := re.search(r'\(0x[\da-fA-F]+\s"(\w+)((\[\d+])+)"\)', var_type):
                 var_type = mat.group(1)
                 array_dim = mat.group(2)
@@ -39,6 +40,8 @@ def print_glob_addr(glob_objs:list, glob_addr_file: str):
                     f.write(hex(addr + i * step_size) + '\n')
             elif '[' not in var_type:  # record pointer values, but ignore them during trace consistency checking
                 f.write(hex(addr) + '\n')
+            elif 'const' in var_type:
+                continue
             else:
                 assert False, "var type: {} not implemented".format(var_type)
         f.close()
