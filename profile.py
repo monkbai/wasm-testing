@@ -180,7 +180,9 @@ def collect_glob_vars(c_src_path: str):
     # status, output = utils.cmd("rm {}".format(out_path))
     # status, output = utils.cmd("rm {}".format(wasm_path))
     # status, output = utils.cmd("rm {}".format(js_path))
-    return new_wasm_globs, new_clang_globs
+
+    # Fix: keep all clang globs, only filter wasm globs
+    return new_wasm_globs, clang_glob_objs
 
 
 def collect_funcs(c_src_path: str):
@@ -217,7 +219,8 @@ def collect_funcs(c_src_path: str):
     # status, output = utils.cmd("rm {}".format(wasm_path))
     # status, output = utils.cmd("rm {}".format(js_path))
 
-    return (new_wasm_funcs, wasm_param_dict, wasm_func_names_list), (new_clang_funcs, clang_param_dict, clang_func_names_list)
+    # Fix: keep all clang func objs
+    return (new_wasm_funcs, wasm_param_dict, wasm_func_names_list), (clang_func_objs, clang_param_dict, clang_func_names_list)
 
 
 if __name__ == '__main__':

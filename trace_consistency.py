@@ -296,6 +296,11 @@ def trace_check_glob_correct(wasm_glob_trace_dict: dict, clang_glob_trace_dict: 
                 inconsistent_list.append(glob_name)
                 print('>Missing glob trace founded.')
                 print('\tglob_name: {}'.format(glob_name))
+            else:
+                # TODO: what if the glob does not exist in wasm globs
+                inconsistent_list.append(glob_name)
+                print('>Missing glob definition founded.')
+                print('\tglob_name: {}'.format(glob_name))
     return inconsistent_list
 
 
@@ -479,17 +484,17 @@ def trace_check(c_src_path: str):
     func_correct_inconsistent_list = \
         trace_check_func_correct(wasm_func_trace_dict, clang_func_trace_dict, wasm_func_objs, wasm_param_dict)
 
-    if len(glob_correct_inconsistent_list) > 0 or len(func_correct_inconsistent_list) > 0:
-        print(glob_correct_inconsistent_list)
-        print(func_correct_inconsistent_list)
-    else:
-        glob_perf_inconsistent_list = \
-            trace_check_glob_perf(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs)
-        func_perf_inconsistent_list = \
-            trace_check_func_perf(wasm_func_trace_dict, clang_func_trace_dict, wasm_func_objs, wasm_param_dict)
+    # if len(glob_correct_inconsistent_list) > 0 or len(func_correct_inconsistent_list) > 0:
+    print('glob (incorrect):', glob_correct_inconsistent_list)
+    print('func (incorrect):', func_correct_inconsistent_list)
+    # else:
+    glob_perf_inconsistent_list = \
+        trace_check_glob_perf(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs)
+    func_perf_inconsistent_list = \
+        trace_check_func_perf(wasm_func_trace_dict, clang_func_trace_dict, wasm_func_objs, wasm_param_dict)
 
-        print(glob_perf_inconsistent_list)
-        print(func_perf_inconsistent_list)
+    print('glob (performance):', glob_perf_inconsistent_list)
+    print('glob (performance):', func_perf_inconsistent_list)
 
 
 def main():
@@ -499,7 +504,7 @@ def main():
 
 
 def test(debug_dir="./debug_cases"):
-    skip_list = ["1001.c", "1001_re.c"]
+    skip_list = ["1001.c", "1001_re.c", "1008.c", "1008_re.c"]
     debug_dir = os.path.abspath(debug_dir)
     files = os.listdir(debug_dir)
     files.sort()
