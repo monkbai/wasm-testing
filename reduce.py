@@ -9,13 +9,13 @@ from compile import cmd
 def generate_test_sh():
     f_path = os.path.realpath(__file__)
     pwd = os.path.dirname(f_path)
-    sh_txt = "#!/bin/bash\ncd {}\npython3 {}/interest.py\n".format(pwd, pwd)
+    sh_txt = "#!/bin/bash\npython3 {}/interest.py tmp.c\n".format(pwd, pwd)
     with open('test.sh', 'w') as f:
         f.write(sh_txt)
     os.chmod('test.sh', 0o777)
 
 
-creduce_path = '/home/lifter/Documents/creduce/build/creduce/creduce'
+creduce_path = '/home/tester/Documents/creduce/build/creduce/creduce'
 
 
 def reduce_c(c_path: str, reduced_path: str):
@@ -55,5 +55,5 @@ def reduce(error_dir='./errorcases'):
 
 
 if __name__ == '__main__':
-    # reduce_c('errorcases/test319.c', 'errorcases/test319_re.c')
+    reduce_c('./test1023.c', './test1023_re.c')
     reduce()

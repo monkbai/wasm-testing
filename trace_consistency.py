@@ -298,9 +298,11 @@ def trace_check_glob_correct(wasm_glob_trace_dict: dict, clang_glob_trace_dict: 
                 print('\tglob_name: {}'.format(glob_name))
             else:
                 # TODO: what if the glob does not exist in wasm globs
-                inconsistent_list.append(glob_name)
-                print('>Missing glob definition founded.')
-                print('\tglob_name: {}'.format(glob_name))
+                # Ignore
+                pass
+                # inconsistent_list.append(glob_name)
+                # print('>Missing glob definition founded.')
+                # print('\tglob_name: {}'.format(glob_name))
     return inconsistent_list
 
 
@@ -496,10 +498,12 @@ def trace_check(c_src_path: str):
     print('glob (performance):', glob_perf_inconsistent_list)
     print('glob (performance):', func_perf_inconsistent_list)
 
+    return glob_correct_inconsistent_list, func_correct_inconsistent_list, glob_perf_inconsistent_list, func_perf_inconsistent_list
+
 
 def main():
     # test
-    c_src_path = "/home/tester/Documents/WebAssembly/examples/test1090_re.c"
+    c_src_path = "./tmp.c"
     trace_check(c_src_path)
 
 
@@ -517,5 +521,5 @@ def test(debug_dir="./debug_cases"):
 
 
 if __name__ == '__main__':
-    # main()
+    main()
     test()

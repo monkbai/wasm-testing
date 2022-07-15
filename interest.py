@@ -1,6 +1,5 @@
-""" Deprecated """
-
 #!/usr/bin/env python3
+""" Deprecated """
 
 import os
 import sys
@@ -29,9 +28,9 @@ def cmd(commandline):
 
 
 project_dir = './'
-emsdk_path = '/home/lifter/Documents/WebAssembly/emsdk'
-emscripten_path = '/home/lifter/Documents/WebAssembly/emsdk/upstream/emscripten'
-node_path = '/home/lifter/Documents/WebAssembly/emsdk/node/14.18.2_64bit/bin'
+emsdk_path = '/home/tester/Documents/WebAssembly/emsdk'
+emscripten_path = '/home/tester/Documents/WebAssembly/emsdk/upstream/emscripten'
+node_path = '/home/tester/Documents/WebAssembly/emsdk/node/14.18.2_64bit/bin'
 
 
 def cmd_modified(commandline):
@@ -64,13 +63,12 @@ def run_single_prog(prog_path):
     return stdout.decode('utf-8'), proc.returncode
 
 
-csmith_path = '/home/lifter/Documents/csmith/src/csmith'
-csmith_cmd = csmith_path + " --max-funcs 1 --max-expr-complexity 5 > {}"
-csmith_runtime = '/home/lifter/Documents/csmith/runtime'
+csmith_path = '/home/tester/Documents/csmith/src/csmith'
+csmith_runtime = '/home/tester/Documents/csmith/runtime'
 csmith_compile_cmd = 'gcc -w {} -I' + csmith_runtime + ' -o {}'
 
-emcc_init = 'source /home/lifter/Documents/WebAssembly/emsdk/emsdk_env.sh'
-emcc_cmd = 'emcc -w -I' + csmith_runtime + ' {} -o {} -o {}'
+emcc_init = 'source /home/tester/Documents/WebAssembly/emsdk/emsdk_env.sh'
+emcc_cmd = 'emcc -w -g -O2 -I' + csmith_runtime + ' {} -o {} -o {}'
 nodejs_cmd = 'node {}'
 
 
@@ -97,11 +95,35 @@ def emcc_generate(c_path: str, wasm_path: str, js_path: str):
     return output.strip()
 
 
-def main():
-    tmp_out = './tmp.out'
-    tmp_c = './tmp.c'
-    tmp_wasm = './tmp.wasm'
-    tmp_js = './tmp.js'
+def udf_checking(c_path: str):
+    """ Checking for undefined behaviors
+        1. Assigned value is garbage or undefined [clang-analyzer-core.uninitialized.Assign]
+        2. The right operand of '>>' is a garbage value [clang-analyzer-core.UndefinedBinaryOperatorResult]
+        3. The result of the left shift is undefined because the right operand is negative [clang-analyzer-core.UndefinedBinaryOperatorResult]
+        3. warning: more '%' conversions than data arguments [clang-diagnostic-format-insufficient-args]
+    """
+    status, output = cmd("clang-tidy-12 {} -- -I/home/tester/Documents/csmith/runtime".format(c_path))
+    if 'Assigned value is garbage or undefined' in output:
+        exit(-1)
+    elif 'garbage value' in output:
+        exit(-1)
+    # elif 'is undefined' in output:
+    #     exit(-1)
+    elif "more '%' conversions than data arguments" in output:
+        exit(-1)
+
+
+def main(tmp_c: str):
+    tmp_c = os.path.abspath(tmp_c)
+    # TODO: what if do not keep <func_1>
+    # with open(tmp_c, 'r') as f:
+    #     if 'func_1' not in f.read():
+    #         exit(-1)  # keep func_1
+    udf_checking(c_path=tmp_c)
+
+    tmp_out = tmp_c[:tmp_c.rfind('.')] + '.out'
+    tmp_wasm = tmp_c[:tmp_c.rfind('.')] + '.wasm'
+    tmp_js = tmp_c[:tmp_c.rfind('.')] + '.js'
 
     status, output = cmd(csmith_compile_cmd.format(tmp_c, tmp_out))
     if status != 0:
@@ -113,11 +135,15 @@ def main():
 
     out2 = emcc_generate(tmp_c, tmp_wasm, tmp_js)
 
-    if output != out2 and 'checksum' in out2:
+    if output.strip() != out2.strip():
         exit(0)
     else:
         exit(-1)
 
 
 if __name__ == '__main__':
-    main()
+    # main('tmp.c')
+    if len(sys.argv) == 2:
+        main(sys.argv[1])
+    else:
+        exit(-1)
