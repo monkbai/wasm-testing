@@ -59,6 +59,37 @@ def get_name_and_addr(glob_obj: dict):
             else:
                 assert False, "glob obj type: {} not implemented".format(obj_type)
 
+            # TODO: handle DW_OP_piece
+            if 'DW_OP_piece' in obj["DW_AT_location"]:
+                assert obj["DW_AT_type"].count("[") == 1
+                tmp_list = []
+                tmp_idx = 0
+                addr_info = obj["DW_AT_location"].strip('()')
+                addr_info = addr_info.split(', ')
+                for dwarf_item in addr_info:
+                    if mat := re.match(r"DW_OP_piece 0x(\w+)", dwarf_item):
+                        tmp_n = int(int(mat.group(1), 16) / step_size)
+                        for i in range(tmp_n):
+                            tmp_list += [(obj_name+'[{}]'.format(tmp_idx), 0)]
+                            tmp_idx += 1
+                    elif mat := re.match(r"DW_OP_addr 0x(\w+)", dwarf_item):
+                        tmp_list += [(obj_name+'[{}]'.format(tmp_idx), int(mat.group(1), 16))]
+                        tmp_idx += 1
+                    else:
+                        assert False
+                assert tmp_idx == obj_num
+                obj_list = tmp_list
+                min_addr = obj_addr + obj_num * step_size
+                max_addr = obj_addr
+                for tmp in tmp_list:
+                    if tmp[1] == 0:
+                        obj_list.remove(tmp)
+                    else:
+                        max_addr = max(tmp[1], max_addr)
+                        min_addr = min(tmp[1], min_addr)
+                glob_array_dict[obj_key] = (obj_list, (min_addr, max_addr))
+                return obj_list, (min_addr, max_addr)
+
             dim_len = len(array_dim)
             for count in range(obj_num):
                 tmp_count = count
@@ -76,6 +107,8 @@ def get_name_and_addr(glob_obj: dict):
                 obj_list.append((name, obj_addr+count*step_size))
             glob_array_dict[obj_key] = (obj_list, (obj_addr, obj_addr+(obj_num-1)*step_size))
             return obj_list, (obj_addr, obj_addr+(obj_num-1)*step_size)
+        elif '*' in obj_type and '[' in obj_type:
+            return [], (0, 0)  # pointer array, ignore
         else:
             assert False
 
@@ -160,6 +193,8 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
 def get_func_obj(func_addr: int, func_objs: list):
     for obj in func_objs:
         obj = obj[1]
+        if "DW_AT_low_pc" not in obj:
+            continue
         current_addr = int(obj["DW_AT_low_pc"].strip('()'), 16)
         if current_addr == func_addr:
             return obj
@@ -169,6 +204,18 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
     func_trace_dict = dict()
     glob_trace_dict = dict()
     clear_glob_array_dict()
+
+    def func_trace_add(key, value):
+        if key in func_trace_dict.keys():
+            func_trace_dict[key].append(value)
+        else:
+            func_trace_dict[key] = [value]
+
+    def glob_trace_add(key, value):
+        if key in glob_trace_dict.keys():
+            glob_trace_dict[key].append(value)
+        else:
+            glob_trace_dict[key] = [value]
 
     aux_info = ""
     with open(trace_path, 'r') as f:
@@ -192,30 +239,34 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
                     assert l.startswith('P:')
                     arg_value = int(l[l.find(':') + 1:].strip(), 16)
                     arg_list.append(arg_value)
-                if func_name in func_trace_dict.keys():
-                    func_trace_dict[func_name].append(('P', arg_list, aux_info))
-                    aux_info = ""
-                else:
-                    func_trace_dict[func_name] = [('P', arg_list, aux_info)]
-                    aux_info = ""
+
+                func_trace_add(func_name, ('P', arg_list, aux_info))
+                aux_info = ""
+
             elif l.startswith('>') and 'R:' in l:  # func return
                 func_addr = int(l.split(' ')[0].strip().strip('>'), 16)
                 func_obj = get_func_obj(func_addr, clang_func_objs)
                 func_name = func_obj["DW_AT_name"].strip('()').strip('"')
 
                 ret_value = int(l[l.find(':') + 1:].strip(), 16)
-                if func_name in func_trace_dict.keys():
-                    func_trace_dict[func_name].append(('R', [ret_value], aux_info))
-                    aux_info = ""
-                else:
-                    func_trace_dict[func_name] = [('R', [ret_value], aux_info)]
-                    aux_info = ""
+
+                func_trace_add(func_name, ('R', [ret_value], aux_info))
+                aux_info = ""
+
             elif l.startswith('W: '):  # globals write
                 write_addr = int(l.split(':')[1].strip(), 16)
+                write_size = int(l.split(':')[2].strip())
                 idx += 1
                 l = lines[idx]
                 assert l.startswith('V: ')
                 write_value = int(l[l.find(':') + 1:].strip(), 16)
+
+                if write_size == 16:
+                    idx += 2
+                    l = lines[idx]
+                    assert l.startswith('V: ')
+                    write_value_con = int(l[l.find(':') + 1:].strip(), 16)
+                    # TODO: 16 bytes values
 
                 glob_name = ''  # find corresponding global name
                 for obj in clang_globs:
@@ -228,12 +279,8 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
                                 break
                 assert len(glob_name) != 0, "error: global {} not founded".format(hex(write_addr))
 
-                if glob_name in glob_trace_dict:
-                    glob_trace_dict[glob_name].append((write_value, aux_info))
-                    aux_info = ""
-                else:
-                    glob_trace_dict[glob_name] = [(write_value, aux_info)]
-                    aux_info = ""
+                glob_trace_add(glob_name, (write_value, aux_info))
+                aux_info = ""
 
             elif l.startswith('P: ') or l.startswith('V: '):
                 assert False, 'error during parsing raw wasm trace.'
@@ -480,9 +527,13 @@ def trace_check(c_src_path: str):
     lcs.FuncItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
     lcs.PtrItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
     # TODO: update instrumentation, and provided more information to locate bugs
+
     # trace consistency check
-    glob_correct_inconsistent_list = \
-        trace_check_glob_correct(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs)
+    if len(wasm_globs) > 0:
+        glob_correct_inconsistent_list = \
+            trace_check_glob_correct(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs)
+    else:
+        glob_correct_inconsistent_list = []
     func_correct_inconsistent_list = \
         trace_check_func_correct(wasm_func_trace_dict, clang_func_trace_dict, wasm_func_objs, wasm_param_dict)
 
@@ -490,8 +541,11 @@ def trace_check(c_src_path: str):
     print('glob (incorrect):', glob_correct_inconsistent_list)
     print('func (incorrect):', func_correct_inconsistent_list)
     # else:
-    glob_perf_inconsistent_list = \
-        trace_check_glob_perf(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs)
+    if len(wasm_globs) > 0:
+        glob_perf_inconsistent_list = \
+            trace_check_glob_perf(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs)
+    else:
+        glob_perf_inconsistent_list = []
     func_perf_inconsistent_list = \
         trace_check_func_perf(wasm_func_trace_dict, clang_func_trace_dict, wasm_func_objs, wasm_param_dict)
 
@@ -508,7 +562,7 @@ def main():
 
 
 def test(debug_dir="./debug_cases"):
-    skip_list = ["1001.c", "1001_re.c", "1008.c", "1008_re.c"]
+    skip_list = ["1001.c", "1008.c"]
     debug_dir = os.path.abspath(debug_dir)
     files = os.listdir(debug_dir)
     files.sort()

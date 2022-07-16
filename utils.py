@@ -68,7 +68,7 @@ def csmith_generate(c_path: str):
 
         # avoid huge test case, which is hard to locate bug statement
         file_size = os.path.getsize(c_path)
-        if file_size >= 1024 * 5:  # TODO: size limit 5KB
+        if file_size >= 1024 * 15:  # TODO: size limit 10KB
             continue
 
         status, output = cmd(config.csmith_compile_cmd.format(c_path, elf_path))
@@ -81,3 +81,27 @@ def csmith_generate(c_path: str):
 
         break
     status, output = cmd("rm {}".format(elf_path))
+
+
+def udf_checking(c_path: str):
+    """ Checking for undefined behaviors
+        1. Assigned value is garbage or undefined [clang-analyzer-core.uninitialized.Assign]
+        2. The right operand of '>>' is a garbage value [clang-analyzer-core.UndefinedBinaryOperatorResult]
+        3. The result of the left shift is undefined because the right operand is negative [clang-analyzer-core.UndefinedBinaryOperatorResult]
+        3. warning: more '%' conversions than data arguments [clang-diagnostic-format-insufficient-args]
+    """
+    status, output = cmd(config.clang_tidy_cmd.format(c_path))
+    if 'Assigned value is garbage or undefined' in output:
+        return False
+    elif 'garbage value' in output:
+        return False
+    elif 'is undefined' in output:
+        return False
+    elif "more '%' conversions than data arguments" in output:
+        return False
+
+    # if 'warning' in output:
+    #     print('check this')
+
+    return True
+

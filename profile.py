@@ -86,6 +86,21 @@ def clang_dwarf(c_src_path: str):
     return out_path, dwarf_txt_path
 
 
+def obj_str_split(obj_str: str):
+    prefix_idx = len(re.match(r"\s+",obj_str).group())
+    tmp_lines = obj_str.split('\n')
+    obj_attr_list = []
+    idx = 0
+    while idx < len(tmp_lines):
+        l = tmp_lines[idx]
+        while (idx+1) < len(tmp_lines) and len(re.match(r"\s+", tmp_lines[idx+1]).group()) > prefix_idx:
+            l += '\n' + tmp_lines[idx+1]
+            idx += 1
+        obj_attr_list.append(l+'\n')
+        idx += 1
+    return obj_attr_list
+
+
 def parse_dwarf_obj(obj_str: str):
     mat = re.match(r"(0x\w+):", obj_str)
     obj_addr = mat.group(1)
@@ -97,14 +112,23 @@ def parse_dwarf_obj(obj_str: str):
     obj_dict["addr"] = obj_addr
     obj_dict["type"] = obj_type
 
-    obj_str = obj_str[obj_str.find('\n'):].strip()  # skip the first line
-    while mat := re.match(r"(DW_\w+)\t(\([^\[\n\r]*(\s+\[[^)\n\r]+\)[^)\n\r]*)*.*\))", obj_str):
+    obj_str = obj_str[obj_str.find('\n')+1:]
+    obj_attr_list = obj_str_split(obj_str)
+
+    for attr_str in obj_attr_list:
+        mat = re.search(r'(DW_\w+)\t(\([^\r]*?\))\n', attr_str)
         attr = mat.group(1)
         value = mat.group(2)
         obj_dict[attr] = value
 
-        obj_str = obj_str.replace(mat.group(), '')
-        obj_str = obj_str.strip()
+    # obj_str = obj_str[obj_str.find('\n'):].strip()  # skip the first line
+    # while mat := re.match(r"(DW_\w+)\t(\([^\[\n\r]*(\s+\[[^)\n\r]+\)[^)\n\r]*)*.*\))", obj_str):
+    #     attr = mat.group(1)
+    #     value = mat.group(2)
+    #     obj_dict[attr] = value
+    #
+    #     obj_str = obj_str.replace(mat.group(), '')
+    #     obj_str = obj_str.strip()
     return obj_addr, obj_type, obj_dict
 
 

@@ -12,7 +12,7 @@ def print_glob_addr(glob_objs:list, glob_addr_file: str):
     with open(glob_addr_file, 'w') as f:
         for obj in glob_objs:
             obj = obj[1]
-            addr = int(obj["DW_AT_location"].strip('()').split(' ')[1], 16)
+            addr = int(re.search(r"DW_OP_addr (\w+)", obj["DW_AT_location"]).group(1), 16)
             var_type = obj["DW_AT_type"]
             var_type = var_type.replace('volatile ', '')
             if mat := re.search(r'\(0x[\da-fA-F]+\s"(\w+)((\[\d+])+)"\)', var_type):
@@ -33,6 +33,8 @@ def print_glob_addr(glob_objs:list, glob_addr_file: str):
                     step_size = 2
                 elif "int8" in var_type:
                     step_size = 1
+                elif 'char' not in var_type and 'short' not in var_type and 'int' not in var_type and 'long' not in var_type:
+                    continue  # ignore complex structure/union
                 else:
                     assert False, "var type: {} not implemented".format(var_type)
 
@@ -42,6 +44,8 @@ def print_glob_addr(glob_objs:list, glob_addr_file: str):
                 f.write(hex(addr) + '\n')
             elif 'const' in var_type:
                 continue
+            elif '*' in var_type and '[' in var_type:
+                continue  # pointer array -> too complex, ignore
             else:
                 assert False, "var type: {} not implemented".format(var_type)
         f.close()
@@ -52,6 +56,10 @@ def print_func_arg_size(func_objs: list, param_dict: dict, func_param_file: str)
         for obj in func_objs:
             obj = obj[1]
             func_name = obj["DW_AT_name"]
+
+            if "DW_AT_low_pc" not in obj:
+                continue
+
             if ' ' in obj["DW_AT_low_pc"]:
                 func_addr = int(obj["DW_AT_low_pc"].strip('()').split(' ')[1], 16)
             else:
@@ -69,6 +77,7 @@ def print_func_arg_size(func_objs: list, param_dict: dict, func_param_file: str)
             f.write(str(len(param_list)) + '\n')
             for param in param_list:
                 arg_type = param["DW_AT_type"]
+                arg_type = arg_type.replace('const ', '')
                 if mat := re.search(r'\(0x[\da-fA-F]+\s"(\w+)"\)', arg_type):
                     arg_type = mat.group(1)
                     if "int64" in arg_type or "long long" in arg_type:
@@ -79,6 +88,8 @@ def print_func_arg_size(func_objs: list, param_dict: dict, func_param_file: str)
                         arg_size = 2
                     elif "int8" in arg_type or "char" in arg_type:
                         arg_size = 1
+                    elif 'char' not in arg_type and 'short' not in arg_type and 'int' not in arg_type and 'long' not in arg_type:
+                        continue  # ignore complex structure/union
                     else:
                         assert False, "var type: {} not implemented".format(arg_type)
                 elif '[' in arg_type or '*' in arg_type:  # array or pointer
@@ -104,15 +115,16 @@ def instrument(c_src_path: str, glob_objs: list, func_objs: list, param_dict: di
     with open(func_addr_file, 'w') as f:
         for obj in func_objs:
             obj = obj[1]
-            addr = int(obj["DW_AT_low_pc"].strip('()'), 16)
-            f.write(hex(addr) + '\n')
+            if "DW_AT_low_pc" in obj:
+                addr = int(obj["DW_AT_low_pc"].strip('()'), 16)
+                f.write(hex(addr) + '\n')
         f.close()
 
     # Preparation 3: print start addresses of functions with return values
     with open(ret_func_addr_file, 'w') as f:
         for obj in func_objs:
             obj = obj[1]
-            if "DW_AT_type" in obj.keys():
+            if "DW_AT_type" in obj and "DW_AT_low_pc" in obj:
                 addr = int(obj["DW_AT_low_pc"].strip('()'), 16)
                 f.write(hex(addr) + '\n')
         f.close()
