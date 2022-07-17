@@ -7,7 +7,7 @@ csmith_compile_cmd = 'gcc -O -g -w {} -I' + csmith_runtime + ' -o {}'
 
 clang_ir_cmd = "clang-12 -c -w -g -O0 -emit-llvm -S {} -o {}"
 clang_ir_cmd2 = "clang-12 -c -w -g -O0 -emit-llvm -S -I/home/tester/Documents/csmith/runtime {} -o {}"
-clang_dwarf_cmd2 = "clang-12 -w -g -O3 -I/home/tester/Documents/csmith/runtime {} -o {}"
+clang_dwarf_cmd2 = "clang-12 -w -g -O0 -I/home/tester/Documents/csmith/runtime {} -o {}"
 
 clang_tidy_cmd = "clang-tidy-12 {} -- -I" + csmith_runtime
 
@@ -17,8 +17,8 @@ emsdk_path = '/home/tester/Documents/WebAssembly/emsdk'
 emscripten_path = '/home/tester/Documents/WebAssembly/emsdk/upstream/emscripten'
 node_path = '/home/tester/Documents/WebAssembly/emsdk/node/14.18.2_64bit/bin'
 
-emcc_cmd = 'emcc -w -g -O3 -I' + csmith_runtime + ' {} -o {} -o {}'
-emcc_dwarf_cmd = 'emcc -w -g -O3 -I' + csmith_runtime + ' {} -o {} -o {}'
+emcc_cmd = 'emcc -w -g -O2 -I' + csmith_runtime + ' {} -o {} -o {}'
+emcc_dwarf_cmd = 'emcc -w -g -O2 -I' + csmith_runtime + ' {} -o {} -o {}'
 nodejs_cmd = 'node {} > {}'
 
 wasm2wat_cmd = "/home/tester/Documents/WebAssembly/wabt/build/wasm2wat {} -o {}"
