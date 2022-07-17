@@ -87,8 +87,8 @@ def get_name_and_addr(glob_obj: dict):
                     else:
                         max_addr = max(tmp[1], max_addr)
                         min_addr = min(tmp[1], min_addr)
-                glob_array_dict[obj_key] = (obj_list, (min_addr, max_addr))
-                return obj_list, (min_addr, max_addr)
+                glob_array_dict[obj_key] = (obj_list, (min_addr, max_addr, step_size))
+                return obj_list, (min_addr, max_addr, step_size)
 
             dim_len = len(array_dim)
             for count in range(obj_num):
@@ -105,16 +105,27 @@ def get_name_and_addr(glob_obj: dict):
                 for k in range(dim_len):
                     name += '[{}]'.format(idx_nums[k])
                 obj_list.append((name, obj_addr+count*step_size))
-            glob_array_dict[obj_key] = (obj_list, (obj_addr, obj_addr+(obj_num-1)*step_size))
-            return obj_list, (obj_addr, obj_addr+(obj_num-1)*step_size)
+            glob_array_dict[obj_key] = (obj_list, (obj_addr, obj_addr+(obj_num-1)*step_size, step_size))
+            return obj_list, (obj_addr, obj_addr+(obj_num-1)*step_size, step_size)
         elif '*' in obj_type and '[' in obj_type:
-            return [], (0, 0)  # pointer array, ignore
+            return [], (0, 0, 0)  # pointer array, ignore
         else:
             assert False
 
     else:  # single addr
-        glob_array_dict[obj_key] = ([(obj_name, obj_addr)], (obj_addr, obj_addr))
-        return [(obj_name, obj_addr)], (obj_addr, obj_addr)
+        # step_size of single var may never be used, but just in case
+        if "int64" in obj_type or '*' in obj_type:
+            step_size = 8
+        elif "int32" in obj_type:
+            step_size = 4
+        elif "int16" in obj_type:
+            step_size = 2
+        elif "int8" in obj_type:
+            step_size = 1
+        else:
+            assert False, "glob obj type: {} not implemented".format(obj_type)
+        glob_array_dict[obj_key] = ([(obj_name, obj_addr)], (obj_addr, obj_addr, step_size))
+        return [(obj_name, obj_addr)], (obj_addr, obj_addr, step_size)
 
 
 def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: list, wasm_param_dict: dict):
@@ -168,7 +179,7 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
                     if len(glob_name) > 0:
                         break
                     obj = obj[1]
-                    obj_list, (min_addr, max_addr) = get_name_and_addr(obj)
+                    obj_list, (min_addr, max_addr, step_size) = get_name_and_addr(obj)
                     if min_addr <= write_addr <= max_addr:
                         for name, addr in obj_list:
                             if write_addr == addr:
@@ -262,25 +273,56 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
                 write_value = int(l[l.find(':') + 1:].strip(), 16)
 
                 if write_size == 16:
-                    idx += 2
+                    idx += 3
                     l = lines[idx]
                     assert l.startswith('V: ')
                     write_value_con = int(l[l.find(':') + 1:].strip(), 16)
-                    # TODO: 16 bytes values
 
-                glob_name = ''  # find corresponding global name
-                for obj in clang_globs:
-                    obj = obj[1]
-                    obj_list, (min_addr, max_addr) = get_name_and_addr(obj)
-                    if min_addr <= write_addr <= max_addr:
+                    # TODO: 16 bytes values, exist in clang O3 binaries
+                    # writes to consecutive elements in an array
+                    glob_name = ''  # find corresponding global name
+                    for obj in clang_globs:
+                        obj = obj[1]
+                        obj_list, (min_addr, max_addr, step_size) = get_name_and_addr(obj)
+                        if min_addr <= write_addr <= max_addr:
+                            for name, addr in obj_list:
+                                if write_addr == addr:
+                                    glob_name = name
+                                    break
+                        if len(glob_name) != 0:
+                            break
+                    assert len(glob_name) != 0, "error: global {} not founded".format(hex(write_addr))
+
+                    # founded the corresponding global variable and the step_size,
+                    # now split the 16 bytes into consecutive writes
+                    if step_size == 8:
+                        tmp_list = [(write_addr, write_value), (write_addr+8, write_value_con)]
+                    elif step_size == 4:
+                        tmp_list = [(write_addr, write_value & 0xffffffff), (write_addr+4, (write_value >> 32)),
+                                    (write_addr+8, write_value_con & 0xffffffff), (write_addr+12, (write_value_con >> 32))]
+                    else:
+                        assert False
+
+                    for w_addr, w_val in tmp_list:
                         for name, addr in obj_list:
-                            if write_addr == addr:
-                                glob_name = name
+                            if w_addr == addr:
+                                glob_trace_add(name, (w_val, aux_info))
                                 break
-                assert len(glob_name) != 0, "error: global {} not founded".format(hex(write_addr))
+                    aux_info = ""
+                else:
+                    glob_name = ''  # find corresponding global name
+                    for obj in clang_globs:
+                        obj = obj[1]
+                        obj_list, (min_addr, max_addr, step_size) = get_name_and_addr(obj)
+                        if min_addr <= write_addr <= max_addr:
+                            for name, addr in obj_list:
+                                if write_addr == addr:
+                                    glob_name = name
+                                    break
+                    assert len(glob_name) != 0, "error: global {} not founded".format(hex(write_addr))
 
-                glob_trace_add(glob_name, (write_value, aux_info))
-                aux_info = ""
+                    glob_trace_add(glob_name, (write_value, aux_info))
+                    aux_info = ""
 
             elif l.startswith('P: ') or l.startswith('V: '):
                 assert False, 'error during parsing raw wasm trace.'
@@ -416,6 +458,8 @@ def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: 
             else:
                 pointer_flags.append(False)
 
+        if func_name not in clang_func_trace_dict:
+            continue  # the function is inlined in optimized clang binary
         clang_trace = clang_func_trace_dict[func_name]
 
         # Emscripten has (advanced) optimization strategies that only inline some out of all function calls
@@ -468,9 +512,13 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
                 pointer_flags.append(False)
 
         if func_name not in clang_func_trace_dict:
-            print('>Func trace inconsistency founded.')
-            print('{} could be optimized or inlined.'.format(func_name))
-            inconsistent_list.append(func_name)
+            # TODO: is missing inline opportunity a problem?
+            # Seems not
+            # https://dl.acm.org/doi/10.1145/3503222.3507744
+
+            # print('>Func trace inconsistency founded.')
+            #  print('{} could be optimized or inlined.'.format(func_name))
+            # inconsistent_list.append(func_name)
             continue
 
         clang_trace = clang_func_trace_dict[func_name]

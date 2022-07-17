@@ -92,7 +92,7 @@ def get_glob_mapping(c_src_path: str):
     trace_consistency.clear_glob_array_dict()
     for obj in wasm_globs:
         obj = obj[1]
-        obj_list, (min_addr, max_addr) = trace_consistency.get_name_and_addr(obj)
+        obj_list, (min_addr, max_addr, step_size) = trace_consistency.get_name_and_addr(obj)
         for name, addr in obj_list:
             wasm_globs_dict[name] = addr
 
@@ -100,7 +100,7 @@ def get_glob_mapping(c_src_path: str):
     trace_consistency.clear_glob_array_dict()
     for obj in clang_globs:
         obj = obj[1]
-        obj_list, (min_addr, max_addr) = trace_consistency.get_name_and_addr(obj)
+        obj_list, (min_addr, max_addr, step_size) = trace_consistency.get_name_and_addr(obj)
         for name, addr in obj_list:
             clang_globs_dict[name] = addr
 

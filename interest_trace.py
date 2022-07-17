@@ -59,7 +59,7 @@ def main(tmp_c: str):
 
 
 if __name__ == '__main__':
-    main('./missopt_cases/test1.c')
+    # main('./missopt_cases/test1.c')
     if len(sys.argv) == 2:
         main(sys.argv[1])
     else:
