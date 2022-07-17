@@ -87,6 +87,13 @@ VOID RecordMemWrite(VOID * ip, VOID * mem_addr, USIZE mem_size)
     else if (mem_size == 8){
         fprintf(trace,"V: 0x%llx\n", *(long long unsigned int *)(mem_addr));
     }
+    else if (mem_size == 16){
+        fprintf(trace,"V: 0x%llx\n", *(long long unsigned int *)(mem_addr));
+
+        fprintf(trace,"%p: %s\n", ip, ins_str.c_str());  // for debug
+        fprintf(trace,"W: %p\n", (VOID *)((uint64_t)mem_addr+8));
+        fprintf(trace,"V: 0x%llx\n", *((long long unsigned int *)(mem_addr)+1));
+    }
     else{
         fprintf(trace,"V: unimplemented mem_size: %ld\n", mem_size);
     }
