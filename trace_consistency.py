@@ -674,7 +674,7 @@ def trace_check(c_src_path: str):
         trace_check_func_perf(wasm_func_trace_dict, clang_func_trace_dict, wasm_func_objs, wasm_param_dict)
 
     print('glob (performance):', glob_perf_inconsistent_list)
-    print('glob (performance):', func_perf_inconsistent_list)
+    print('func (performance):', func_perf_inconsistent_list)
 
     return glob_correct_inconsistent_list, func_correct_inconsistent_list, glob_perf_inconsistent_list, func_perf_inconsistent_list
 

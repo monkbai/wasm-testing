@@ -60,7 +60,7 @@ def main(tmp_c: str):
 
 if __name__ == '__main__':
     # main('./missopt_cases/test45.c')
-    main('./tmp.c')
+    # main('./tmp.c')
     if len(sys.argv) == 2:
         main(sys.argv[1])
     else:

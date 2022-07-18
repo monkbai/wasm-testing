@@ -42,6 +42,9 @@ def lookup(addr: int):
     return debug_line_dict[addr]
 
 
+# TODO: implement wasm addr -> line lookup function
+
+
 if __name__ == '__main__':
     dump_elf("/home/tester/Documents/WebAssembly/wasm-compiler-testing/debug_cases/test1008.out")
     print(lookup(int('0x4017a3', 16)))
