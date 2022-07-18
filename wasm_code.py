@@ -8,24 +8,33 @@ wasm_type_def = """
 """
 
 wasm_myprint_i32w = """
-  (func $myprint_i32w (type {}) (param i32)
+  (func $myprint_i32w (type {}) (param i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 16
     i32.sub
-    local.tee 1
+    local.tee 2
     global.set $__stack_pointer  ;; lift stack pointer
     
-    local.get 1
+    local.get 2
     local.get 0
     i32.store ;; store address in stack mem
     
     i32.const {}
-    local.get 1
+    local.get 2
     call $iprintf  ;; print the address
     drop
     
+    local.get 2
     local.get 1
+    i32.store ;; store size in stack mem
+    
+    i32.const {}
+    local.get 2
+    call $iprintf  ;; print the write size
+    drop
+    
+    local.get 2
     i32.const 16  ;; restore stack pointer
     i32.add
     global.set $__stack_pointer)
@@ -191,6 +200,7 @@ wasm_instrument_i32store = """
     (local i32 i32)
     
     local.get 0
+    i32.const 4
     call $myprint_i32w  ;; print the address
     
     local.get 1
@@ -210,6 +220,7 @@ wasm_instrument_i32store_off = """
     local.get 2
     i32.add
     local.tee 3
+    i32.const 4
     call $myprint_i32w  ;; print the address
     
     local.get 1
@@ -224,6 +235,7 @@ wasm_instrument_i32store_off = """
 wasm_instrument_i64store = """
 (func $instrument_i64store (type {}) (param i32 i64)
     local.get 0
+    i32.const 8
     call $myprint_i32w  ;; print the address
     
     local.get 1
@@ -236,7 +248,8 @@ wasm_instrument_i64store = """
 """
 
 wasm_data_str = """
-  (data $.str.w32 (i32.const {}) "W: 0x%lx\\0a\\00")
+  (data $.str.w32 (i32.const {}) "W: 0x%lx: \\00")
+  (data $.str.w32s (i32.const {}) "%d\\0a\\00")
   (data $.str.v32 (i32.const {}) "V: 0x%lx\\0a\\00")
   (data $.str.p32 (i32.const {}) "P: 0x%lx\\0a\\00")
   (data $.str.p64 (i32.const {}) "P: 0x%llx\\0a\\00")

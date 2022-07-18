@@ -85,11 +85,17 @@ def add_data_str(func_sec: str):
     data_offset, appro_len = get_data_offset(func_sec, with_skip=True)
     next_offset = data_offset + appro_len
     idx = func_sec.rfind(')')
+
+    str_count = wasm_code.wasm_data_str.count('{}')
+    offset_list = []
+    for i in range(str_count):
+        offset_list.append(next_offset + i*12)
+
     func_sec = func_sec[:idx] + \
-               wasm_code.wasm_data_str.format(next_offset, next_offset+12, next_offset+24, next_offset+36, next_offset+48, next_offset+60, next_offset+72) + \
+               wasm_code.wasm_data_str.format(*offset_list) + \
                func_sec[idx:]
 
-    return func_sec, [next_offset, next_offset+12, next_offset+24, next_offset+36, next_offset+48, next_offset+60, next_offset+72]
+    return func_sec, offset_list
 
 
 def add_data_str2(func_sec: str, func_objs: list):
@@ -132,13 +138,13 @@ def add_data_str3(func_sec: str, func_objs: list):
 
 def add_utility_funcs(type_sec: str, type_ids: list, data_offsets: list):
     # print functions
-    type_sec += wasm_code.wasm_myprint_i32w.format(type_ids[1], data_offsets[0])
-    type_sec += wasm_code.wasm_myprint_i32v.format(type_ids[1], data_offsets[1])
-    type_sec += wasm_code.wasm_myprint_i32p.format(type_ids[1], data_offsets[2])
-    type_sec += wasm_code.wasm_myprint_i64p.format(type_ids[2], data_offsets[3])
-    type_sec += wasm_code.wasm_myprint_i64v.format(type_ids[2], data_offsets[4])
-    type_sec += wasm_code.wasm_myprint_i32r.format(type_ids[3], data_offsets[5])
-    type_sec += wasm_code.wasm_myprint_i32id.format(type_ids[1], data_offsets[6])
+    type_sec += wasm_code.wasm_myprint_i32w.format(type_ids[0], data_offsets[0], data_offsets[1])
+    type_sec += wasm_code.wasm_myprint_i32v.format(type_ids[1], data_offsets[2])
+    type_sec += wasm_code.wasm_myprint_i32p.format(type_ids[1], data_offsets[3])
+    type_sec += wasm_code.wasm_myprint_i64p.format(type_ids[2], data_offsets[4])
+    type_sec += wasm_code.wasm_myprint_i64v.format(type_ids[2], data_offsets[5])
+    type_sec += wasm_code.wasm_myprint_i32r.format(type_ids[3], data_offsets[6])
+    type_sec += wasm_code.wasm_myprint_i32id.format(type_ids[1], data_offsets[7])
     type_sec += wasm_code.wasm_myprint_call.format(type_ids[1])
 
     # store functions

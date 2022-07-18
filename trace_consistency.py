@@ -195,8 +195,8 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
                 aux_info = ""
 
             elif l.startswith('W: '):  # globals write
-                write_addr = int(l[l.find(':')+1:].strip(), 16)
-                write_size = int(l.split(':')[2].strip())  # TODO: update wasm instrumentation
+                write_addr = int(l.split(':')[1].strip(), 16)
+                write_size = int(l.split(':')[2].strip())
                 idx += 1
                 l = lines[idx]
                 assert l.startswith('V: ')
@@ -229,6 +229,7 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
                         glob_name = ''
                         write_addr += step_size
                         write_value = write_value >> step_size * 8
+                        write_size -= step_size
 
                     for it in tmp_list:
                         glob_trace_add(it[0], (it[1], aux_info))
