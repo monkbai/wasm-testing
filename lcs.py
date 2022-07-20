@@ -46,7 +46,7 @@ class FuncItem:
         FuncItem.clang_objs_dict = clang_objs_dict
 
     def __init__(self, func_name: str, item_type='P', item_values=[], pointer_flags=[]):
-        assert len(item_values) == len(pointer_flags)
+        assert item_type == 'R' or len(item_values) == len(pointer_flags)
         self.func_name = func_name
         self.type = item_type
         self.values = item_values

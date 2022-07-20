@@ -45,7 +45,7 @@ def main(tmp_c: str):
     glob_correct_inconsistent_list, \
         func_correct_inconsistent_list, \
         glob_perf_inconsistent_list, \
-        func_perf_inconsistent_list = trace_consistency.trace_check(tmp_c)
+        func_perf_inconsistent_list = trace_consistency.trace_check(tmp_c, clang_opt_level='-O0', emcc_opt_level='-O0')
 
     glob_list = ['crc32_context', 'g_13']
     func_list = ['transparent_crc']
@@ -59,7 +59,7 @@ def main(tmp_c: str):
 
 
 if __name__ == '__main__':
-    # main('./missopt_cases/test45.c')
+    main('./inconsis_trace/testcases/test21.c')
     # main('./tmp.c')
     if len(sys.argv) == 2:
         main(sys.argv[1])

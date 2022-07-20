@@ -38,6 +38,8 @@ def wat2wasm(wasm_path: str, wat_txt: str):
     utils.project_dir = dir_path
 
     status, output = utils.cmd(config.wat2wasm_cmd.format(wat_path, wasm_path))
+    if status != 0:
+        assert False, "Error: failed to recompile wat file\n"+output
 
     utils.project_dir = tmp_dir
 
@@ -64,9 +66,9 @@ def get_type_id(type_sec: str):
 
 def add_type(type_sec: str):
     last_id = get_type_id(type_sec)
-    type_sec += wasm_code.wasm_type_def.format(last_id + 1, last_id + 2, last_id + 3, last_id + 4, last_id + 5, last_id + 6)
+    type_sec += wasm_code.wasm_type_def.format(last_id + 1, last_id + 2, last_id + 3, last_id + 4, last_id + 5, last_id + 6, last_id + 7, last_id + 8)
 
-    return type_sec, [last_id + 1, last_id + 2, last_id + 3, last_id + 4, last_id + 5, last_id + 6]
+    return type_sec, [last_id + 1, last_id + 2, last_id + 3, last_id + 4, last_id + 5, last_id + 6, last_id + 7, last_id + 8]
 
 
 def get_data_offset(func_sec: str, with_skip=False):
@@ -136,7 +138,10 @@ def add_data_str3(func_sec: str, func_objs: list):
     return func_sec, func_name2offset
 
 
-def add_utility_funcs(type_sec: str, type_ids: list, data_offsets: list):
+def add_utility_funcs(type_sec: str, type_ids: list, data_offsets: list, stdout_addr: int, opt_level='-O2'):
+    if opt_level.endswith('O0'):
+        type_sec += wasm_code.wasm_vfiprintf.format(type_ids[7])
+        type_sec += wasm_code.wasm_iprintf.format(type_ids[6], stdout_addr)
     # print functions
     type_sec += wasm_code.wasm_myprint_i32w.format(type_ids[0], data_offsets[0], data_offsets[1])
     type_sec += wasm_code.wasm_myprint_i32v.format(type_ids[1], data_offsets[2])
@@ -252,7 +257,7 @@ def _instrument_func_call(func_txt: str, func_name: str, func_name2offset: dict,
                     param_type = param["DW_AT_type"]
                     if 'int64' in param_type:
                         l += prefix_space + 'call $myprint_i64p\n'
-                    elif 'char*' in param_type or '"int"' in param_type:
+                    elif 'char*' in param_type or '"int"' in param_type or 'int32' in param_type or 'int8' in param_type:  # pointer in wasm is i32
                         l += prefix_space + 'call $myprint_i32p\n'
                     else:
                         assert False, "param type not implemented"
@@ -288,7 +293,7 @@ def extract_func_define(func_sec: str, idx: int):
     return func_sec[:end_idx]
 
 
-def instrument_glob_write(wat_txt, func_objs: list):
+def instrument_glob_write(wat_txt, stdout_addr, func_objs: list, opt_level='-O2'):
     # func names list:
     func_names = []
     for obj in func_objs:
@@ -302,7 +307,7 @@ def instrument_glob_write(wat_txt, func_objs: list):
     func_sec = wat_txt[idx:]
     func_sec, data_offsets = add_data_str(func_sec)
 
-    type_sec = add_utility_funcs(type_sec, type_ids, data_offsets)
+    type_sec = add_utility_funcs(type_sec, type_ids, data_offsets, stdout_addr, opt_level)
 
     # traverse all user-defined functions, and instrument all *.store instructions
     new_func = copy.deepcopy(func_sec)
@@ -360,17 +365,26 @@ def instrument_func_call(wat_txt, func_objs: list, param_dict: dict):
     return type_sec + new_func
 
 
-def instrument(wasm_path: str, glob_objs: list, func_objs: list, param_dict: dict, new_wasm_path: str):
+def instrument(wasm_path: str, glob_objs: list, func_objs: list, param_dict: dict, new_wasm_path: str, opt_level='-O2'):
     global callee_names_list
+    for obj in glob_objs:
+        obj = obj[1]
+        if obj["DW_AT_name"].strip('()').strip('"') == '__stdout_FILE':
+            stdout_addr = obj["DW_AT_location"]
+            stdout_addr = int(re.match(r"\(DW_OP_addr\s0x([\w]+)\)", stdout_addr).group(1), 16)
+
     for obj in func_objs:
         obj = obj[1]
         callee_names_list.append(obj["DW_AT_name"].strip('()').strip('"'))
 
     wat_txt = wasm2wat(wasm_path)
 
-    new_wat_txt = instrument_glob_write(wat_txt, func_objs)
+    new_wat_txt = instrument_glob_write(wat_txt, stdout_addr, func_objs, opt_level)
 
     new_wat_txt = instrument_func_call(new_wat_txt, func_objs, param_dict)
+
+    # if opt_level.strip().endswith('O0'):
+    #     new_wat_txt = new_wat_txt.replace('$iprintf', '$printf')  # iprintf and printf are different
 
     wat2wasm(new_wasm_path, new_wat_txt)
 

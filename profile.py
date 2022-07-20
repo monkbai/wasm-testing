@@ -49,7 +49,7 @@ def reg_global_var(line: str):
 # parsing LLVM IR is not robust
 # turn to DWARF info
 # deprecate above functions
-def emscripten_dwarf(c_src_path: str):
+def emscripten_dwarf(c_src_path: str, opt_level='-O2'):
     c_src_path = os.path.abspath(c_src_path)
     dir_path = os.path.dirname(c_src_path)
     assert c_src_path.endswith('.c')
@@ -60,7 +60,7 @@ def emscripten_dwarf(c_src_path: str):
     tmp_dir = utils.project_dir
     utils.project_dir = dir_path
 
-    stdout, stderr = utils.cmd_emsdk(config.emcc_dwarf_cmd.format(c_src_path, wasm_path, js_path))
+    stdout, stderr = utils.cmd_emsdk(config.emcc_dwarf_opt_cmd.format(opt_level, c_src_path, wasm_path, js_path))
     status, output = utils.cmd(config.dwarfdump_cmd.format(wasm_path, dwarf_txt_path))
 
     utils.project_dir = tmp_dir
@@ -68,7 +68,7 @@ def emscripten_dwarf(c_src_path: str):
     return wasm_path, js_path, dwarf_txt_path
 
 
-def clang_dwarf(c_src_path: str):
+def clang_dwarf(c_src_path: str, opt_level='-O0'):
     c_src_path = os.path.abspath(c_src_path)
     dir_path = os.path.dirname(c_src_path)
     assert c_src_path.endswith('.c')
@@ -78,7 +78,7 @@ def clang_dwarf(c_src_path: str):
     tmp_dir = utils.project_dir
     utils.project_dir = dir_path
 
-    status, output = utils.cmd(config.clang_dwarf_cmd2.format(c_src_path, out_path))
+    status, output = utils.cmd(config.clang_dwarf_opt_cmd.format(opt_level, c_src_path, out_path))
     status, output = utils.cmd(config.dwarfdump_cmd.format(out_path, dwarf_txt_path))
 
     utils.project_dir = tmp_dir
@@ -179,9 +179,15 @@ def traverse_dwarf_subprogs(dwarf_path: str):
     return func_objs, param_dict, func_names_list
 
 
-def collect_glob_vars(c_src_path: str):
-    out_path, clang_dwarf_txt_path = clang_dwarf(c_src_path)
-    wasm_path, js_path, wasm_dwarf_txt_path = emscripten_dwarf(c_src_path)
+def get_wasm_globs(c_src_path: str, emcc_opt_level='-O2'):
+    wasm_path, js_path, wasm_dwarf_txt_path = emscripten_dwarf(c_src_path, opt_level=emcc_opt_level)
+    wasm_glob_objs, wasm_name_list = traverse_dwarf(wasm_dwarf_txt_path)
+    return wasm_glob_objs
+
+
+def collect_glob_vars(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
+    out_path, clang_dwarf_txt_path = clang_dwarf(c_src_path, opt_level=clang_opt_level)
+    wasm_path, js_path, wasm_dwarf_txt_path = emscripten_dwarf(c_src_path, opt_level=emcc_opt_level)
 
     wasm_glob_objs, wasm_name_list = traverse_dwarf(wasm_dwarf_txt_path)
     clang_glob_objs, clang_name_list = traverse_dwarf(clang_dwarf_txt_path)
@@ -209,9 +215,9 @@ def collect_glob_vars(c_src_path: str):
     return new_wasm_globs, clang_glob_objs
 
 
-def collect_funcs(c_src_path: str):
-    out_path, clang_dwarf_txt_path = clang_dwarf(c_src_path)
-    wasm_path, js_path, wasm_dwarf_txt_path = emscripten_dwarf(c_src_path)
+def collect_funcs(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
+    out_path, clang_dwarf_txt_path = clang_dwarf(c_src_path, opt_level=clang_opt_level)
+    wasm_path, js_path, wasm_dwarf_txt_path = emscripten_dwarf(c_src_path, opt_level=emcc_opt_level)
 
     wasm_func_objs, wasm_param_dict, wasm_func_names_list = traverse_dwarf_subprogs(wasm_dwarf_txt_path)
     clang_func_objs, clang_param_dict, clang_func_names_list = traverse_dwarf_subprogs(clang_dwarf_txt_path)

@@ -203,13 +203,15 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
                 write_value = int(l[l.find(':') + 1:].strip(), 16)
 
                 glob_name = ''  # find corresponding global name
+                if write_addr in lcs.PtrItem.wasm_objs_dict:
+                    glob_name, clang_addr = lcs.PtrItem.wasm_objs_dict[write_addr]
                 for obj in wasm_globs:
                     obj = obj[1]
                     obj_list, (min_addr, max_addr, step_size) = get_name_and_addr(obj)
                     if min_addr <= write_addr <= max_addr:
                         for name, addr in obj_list:
-                            if write_addr == addr:
-                                glob_name = name
+                            if glob_name == name:  # if write_addr == addr:
+                                # glob_name = name
                                 break
                     if len(glob_name) > 0:
                         break
@@ -327,13 +329,15 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
                     # TODO: 16 bytes values, exist in clang O3 binaries
                     # writes to consecutive elements in an array
                     glob_name = ''  # find corresponding global name
+                    if write_addr in lcs.PtrItem.clang_objs_dict:
+                        glob_name, wasm_addr = lcs.PtrItem.clang_objs_dict[write_addr]
                     for obj in clang_globs:
                         obj = obj[1]
                         obj_list, (min_addr, max_addr, step_size) = get_name_and_addr(obj)
                         if min_addr <= write_addr <= max_addr:
                             for name, addr in obj_list:
-                                if write_addr == addr:
-                                    glob_name = name
+                                if glob_name == name:  # if write_addr == addr:
+                                    # glob_name = name
                                     break
                         if len(glob_name) != 0:
                             break
@@ -358,13 +362,15 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
                         aux_info = ""
                 else:
                     glob_name = ''  # find corresponding global name
+                    if write_addr in lcs.PtrItem.clang_objs_dict:
+                        glob_name, wasm_addr = lcs.PtrItem.clang_objs_dict[write_addr]
                     for obj in clang_globs:
                         obj = obj[1]
                         obj_list, (min_addr, max_addr, step_size) = get_name_and_addr(obj)
                         if min_addr <= write_addr <= max_addr:
                             for name, addr in obj_list:
-                                if write_addr == addr:
-                                    glob_name = name
+                                if glob_name == name:  # if write_addr == addr:
+                                    # glob_name = name
                                     break
 
                     if len(glob_name) != 0:
@@ -524,15 +530,16 @@ def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: 
 
         func_key = '("{}")'.format(func_name)
         pointer_flags = []
-        params = wasm_param_dict[func_key]
-        for param in params:
-            if '*' in param["DW_AT_type"] or '[' in param["DW_AT_type"]:
-                # TODO: What array argument looks like?
-                if '[' in param["DW_AT_type"]:
-                    print("debug: array argument")
-                pointer_flags.append(True)
-            else:
-                pointer_flags.append(False)
+        if func_key in wasm_param_dict:
+            params = wasm_param_dict[func_key]
+            for param in params:
+                if '*' in param["DW_AT_type"] or '[' in param["DW_AT_type"]:
+                    # TODO: What array argument looks like?
+                    if '[' in param["DW_AT_type"]:
+                        print("debug: array argument")
+                    pointer_flags.append(True)
+                else:
+                    pointer_flags.append(False)
 
         if func_name not in clang_func_trace_dict:
             continue  # the function is inlined in optimized clang binary
@@ -577,15 +584,16 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
 
         func_key = '("{}")'.format(func_name)
         pointer_flags = []
-        params = wasm_param_dict[func_key]
-        for param in params:
-            if '*' in param["DW_AT_type"] or '[' in param["DW_AT_type"]:
-                # TODO: What array argument looks like?
-                if '[' in param["DW_AT_type"]:
-                    print("debug: array argument")
-                pointer_flags.append(True)
-            else:
-                pointer_flags.append(False)
+        if func_key in wasm_param_dict:
+            params = wasm_param_dict[func_key]
+            for param in params:
+                if '*' in param["DW_AT_type"] or '[' in param["DW_AT_type"]:
+                    # TODO: What array argument looks like?
+                    if '[' in param["DW_AT_type"]:
+                        print("debug: array argument")
+                    pointer_flags.append(True)
+                else:
+                    pointer_flags.append(False)
 
         if func_name not in clang_func_trace_dict:
             # TODO: is missing inline opportunity a problem?
@@ -623,33 +631,34 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
     return inconsistent_list
 
 
-def trace_check(c_src_path: str):
+def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
     print("\nTrace Consistency Checking for {}...".format(c_src_path))
     # profile, get dwarf information of global variables and function arguments
-    wasm_globs, clang_globs = profile.collect_glob_vars(c_src_path)
+    wasm_globs, clang_globs = profile.collect_glob_vars(c_src_path, clang_opt_level, emcc_opt_level)
     (wasm_func_objs, wasm_param_dict, wasm_func_names_list), \
-        (clang_func_objs, clang_param_dict, clang_func_names_list) = profile.collect_funcs(c_src_path)
+        (clang_func_objs, clang_param_dict, clang_func_names_list) = profile.collect_funcs(c_src_path, clang_opt_level, emcc_opt_level)
+    wasm_globs_all = profile.get_wasm_globs(c_src_path, emcc_opt_level)
 
     # compile
-    wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_src_path)
-    elf_path, dwarf_path = profile.clang_dwarf(c_src_path)
+    wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_src_path, opt_level=emcc_opt_level)
+    elf_path, dwarf_path = profile.clang_dwarf(c_src_path, opt_level=clang_opt_level)
 
     # get trace
-    wasm_instrument.instrument(wasm_path, wasm_globs, wasm_func_objs, wasm_param_dict, wasm_path)
+    wasm_instrument.instrument(wasm_path, wasm_globs_all, wasm_func_objs, wasm_param_dict, wasm_path, opt_level=emcc_opt_level)
     clang_raw_trace_path = pin_instrument.instrument(c_src_path, clang_globs, clang_func_objs, clang_param_dict, elf_path)
     wasm_raw_trace_path = wasm_instrument.run_wasm(js_path)
+
+    # Before checking
+    wat_path = wasm_path[:-5] + '.wat'
+    mapping_dict, wasm_objs_dict, clang_objs_dict = pointed_objs.get_pointed_objs_mapping(c_src_path, elf_path, wat_path, clang_opt_level, emcc_opt_level)
+    lcs.FuncItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
+    lcs.PtrItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
 
     # trace generalization
     wasm_glob_trace_dict, wasm_func_trace_dict = generalize_wasm_trace(wasm_raw_trace_path,
                                                                        wasm_globs, wasm_func_objs, wasm_param_dict)
     clang_glob_trace_dict, clang_func_trace_dict = generalize_pin_trace(clang_raw_trace_path,
                                                                         clang_globs, clang_func_objs, clang_param_dict)
-
-    # Before checking
-    wat_path = wasm_path[:-5] + '.wat'
-    mapping_dict, wasm_objs_dict, clang_objs_dict = pointed_objs.get_pointed_objs_mapping(c_src_path, elf_path, wat_path)
-    lcs.FuncItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
-    lcs.PtrItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
     # TODO: update instrumentation, and provided more information to locate bugs
 
     # trace consistency check

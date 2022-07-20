@@ -83,10 +83,10 @@ def get_str_mapping(clang_elf_path: str, wat_path: str):
 # Get global variable mappings
 # ==================
 
-def get_glob_mapping(c_src_path: str):
+def get_glob_mapping(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
     globs_mapping = []
 
-    wasm_globs, clang_globs = profile.collect_glob_vars(c_src_path)
+    wasm_globs, clang_globs = profile.collect_glob_vars(c_src_path, clang_opt_level, emcc_opt_level)
 
     wasm_globs_dict = dict()
     trace_consistency.clear_glob_array_dict()
@@ -117,8 +117,8 @@ def get_glob_mapping(c_src_path: str):
 # ==================
 
 
-def get_pointed_objs_mapping(c_path: str, elf_path: str, wat_path: str):
-    globs_mapping = get_glob_mapping(c_path)
+def get_pointed_objs_mapping(c_path: str, elf_path: str, wat_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
+    globs_mapping = get_glob_mapping(c_path, clang_opt_level, emcc_opt_level)
     str_mapping = get_str_mapping(elf_path, wat_path)
 
     wasm_objs_dict = dict()
