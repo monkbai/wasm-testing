@@ -66,9 +66,15 @@ def get_type_id(type_sec: str):
 
 def add_type(type_sec: str):
     last_id = get_type_id(type_sec)
-    type_sec += wasm_code.wasm_type_def.format(last_id + 1, last_id + 2, last_id + 3, last_id + 4, last_id + 5, last_id + 6, last_id + 7, last_id + 8)
 
-    return type_sec, [last_id + 1, last_id + 2, last_id + 3, last_id + 4, last_id + 5, last_id + 6, last_id + 7, last_id + 8]
+    type_count = wasm_code.wasm_type_def.count('{}')
+    offset_list = []
+    for i in range(type_count):
+        offset_list.append(last_id + i + 1)
+
+    type_sec += wasm_code.wasm_type_def.format(*offset_list)
+
+    return type_sec, offset_list
 
 
 def get_data_offset(func_sec: str, with_skip=False):
@@ -154,8 +160,20 @@ def add_utility_funcs(type_sec: str, type_ids: list, data_offsets: list, stdout_
 
     # store functions
     type_sec += wasm_code.wasm_instrument_i32store.format(type_ids[0])
+    type_sec += wasm_code.wasm_instrument_i32store16.format(type_ids[0])
+    type_sec += wasm_code.wasm_instrument_i32store8.format(type_ids[0])
     type_sec += wasm_code.wasm_instrument_i64store.format(type_ids[4])
+    type_sec += wasm_code.wasm_instrument_i64store32.format(type_ids[4])
+    type_sec += wasm_code.wasm_instrument_i64store16.format(type_ids[4])
+    type_sec += wasm_code.wasm_instrument_i64store8.format(type_ids[4])
     type_sec += wasm_code.wasm_instrument_i32store_off.format(type_ids[5])
+    type_sec += wasm_code.wasm_instrument_i32store16_off.format(type_ids[5])
+    type_sec += wasm_code.wasm_instrument_i32store8_off.format(type_ids[5])
+    type_sec += wasm_code.wasm_instrument_i64store_off.format(type_ids[8])
+    type_sec += wasm_code.wasm_instrument_i64store32_off.format(type_ids[8])
+    type_sec += wasm_code.wasm_instrument_i64store16_off.format(type_ids[8])
+    type_sec += wasm_code.wasm_instrument_i64store8_off.format(type_ids[8])
+    # TODO: f32.store, f64.store are not implemented yet
 
     return type_sec
 
@@ -202,21 +220,69 @@ def _instrument_func_line(func_txt: str):
             l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
             l += prefix_space + "call $instrument_i32store  ;; i32.store"
             new_func_txt += l + '\n'
-            idx += 1
-            continue
+        elif l == 'i32.store16':
+            l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
+            l += prefix_space + "call $instrument_i32store16  ;; i32.store16"
+            new_func_txt += l + '\n'
+        elif l == 'i32.store8':
+            l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
+            l += prefix_space + "call $instrument_i32store8  ;; i32.store8"
+            new_func_txt += l + '\n'
+
         elif l == 'i64.store':
             l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
             l += prefix_space + "call $instrument_i64store  ;; i64.store"
             new_func_txt += l + '\n'
-            idx += 1
-            continue
+        elif l == 'i64.store32':
+            l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
+            l += prefix_space + "call $instrument_i64store32  ;; i64.store32"
+            new_func_txt += l + '\n'
+        elif l == 'i64.store16':
+            l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
+            l += prefix_space + "call $instrument_i64store16  ;; i64.store16"
+            new_func_txt += l + '\n'
+        elif l == 'i64.store8':
+            l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
+            l += prefix_space + "call $instrument_i64store8  ;; i64.store8"
+            new_func_txt += l + '\n'
+
         elif mat := re.match(r'i32\.store offset=(\d+)', l):
             addr_offset = int(mat.group(1))
             l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
             l += prefix_space + "i32.const {}\n".format(addr_offset) + prefix_space + "call $instrument_i32store_off  ;; " + lines[idx].strip()
             new_func_txt += l + '\n'
-            idx += 1
-            continue
+        elif mat := re.match(r'i32\.store16 offset=(\d+)', l):
+            addr_offset = int(mat.group(1))
+            l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
+            l += prefix_space + "i32.const {}\n".format(addr_offset) + prefix_space + "call $instrument_i32store16_off  ;; " + lines[idx].strip()
+            new_func_txt += l + '\n'
+        elif mat := re.match(r'i32\.store8 offset=(\d+)', l):
+            addr_offset = int(mat.group(1))
+            l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
+            l += prefix_space + "i32.const {}\n".format(addr_offset) + prefix_space + "call $instrument_i32store8_off  ;; " + lines[idx].strip()
+            new_func_txt += l + '\n'
+
+        elif mat := re.match(r'i64\.store offset=(\d+)', l):
+            addr_offset = int(mat.group(1))
+            l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
+            l += prefix_space + "i32.const {}\n".format(addr_offset) + prefix_space + "call $instrument_i64store_off  ;; " + lines[idx].strip()
+            new_func_txt += l + '\n'
+        elif mat := re.match(r'i64\.store32 offset=(\d+)', l):
+            addr_offset = int(mat.group(1))
+            l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
+            l += prefix_space + "i32.const {}\n".format(addr_offset) + prefix_space + "call $instrument_i64store32_off  ;; " + lines[idx].strip()
+            new_func_txt += l + '\n'
+        elif mat := re.match(r'i64\.store16 offset=(\d+)', l):
+            addr_offset = int(mat.group(1))
+            l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
+            l += prefix_space + "i32.const {}\n".format(addr_offset) + prefix_space + "call $instrument_i64store16_off  ;; " + lines[idx].strip()
+            new_func_txt += l + '\n'
+        elif mat := re.match(r'i64\.store8 offset=(\d+)', l):
+            addr_offset = int(mat.group(1))
+            l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
+            l += prefix_space + "i32.const {}\n".format(addr_offset) + prefix_space + "call $instrument_i64store8_off  ;; " + lines[idx].strip()
+            new_func_txt += l + '\n'
+
         elif mat := re.match(r'call\s\$(\w+)', l):
             callee_name = mat.group(1)
             if callee_name in callee_names_list:
@@ -225,9 +291,9 @@ def _instrument_func_line(func_txt: str):
                 new_func_txt += l + '\n'
             else:
                 new_func_txt += lines[idx] + '\n'
-            idx += 1
-            continue
-        new_func_txt += lines[idx] + '\n'
+
+        else:
+            new_func_txt += lines[idx] + '\n'
         idx += 1
     return new_func_txt
 

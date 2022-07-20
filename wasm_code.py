@@ -7,6 +7,7 @@ wasm_type_def = """
   (type (;{};) (func (param i32 i32 i32)))
   (type (;{};) (func (param i32 i32) (result i32)))
   (type (;{};) (func (param i32 i32 i32) (result i32)))
+  (type (;{};) (func (param i32 i64 i32) ))
 """
 
 
@@ -247,6 +248,40 @@ wasm_instrument_i32store = """
     )
 """
 
+wasm_instrument_i32store16 = """
+  (func $instrument_i32store16 (type {}) (param i32 i32)
+    (local i32 i32)
+
+    local.get 0
+    i32.const 2
+    call $myprint_i32w  ;; print the address
+
+    local.get 1
+    call $myprint_i32v  ;; print the value
+
+    local.get 0
+    local.get 1
+    i32.store16  ;; original store operation
+    )
+"""
+
+wasm_instrument_i32store8 = """
+  (func $instrument_i32store8 (type {}) (param i32 i32)
+    (local i32 i32)
+
+    local.get 0
+    i32.const 1
+    call $myprint_i32w  ;; print the address
+
+    local.get 1
+    call $myprint_i32v  ;; print the value
+
+    local.get 0
+    local.get 1
+    i32.store8  ;; original store operation
+    )
+"""
+
 wasm_instrument_i32store_off = """
   (func $instrument_i32store_off (type {}) (param i32 i32 i32)
     (local i32 i32)
@@ -267,6 +302,46 @@ wasm_instrument_i32store_off = """
     )
 """
 
+wasm_instrument_i32store16_off = """
+  (func $instrument_i32store16_off (type {}) (param i32 i32 i32)
+    (local i32 i32)
+
+    local.get 0
+    local.get 2
+    i32.add
+    local.tee 3
+    i32.const 2
+    call $myprint_i32w  ;; print the address
+
+    local.get 1
+    call $myprint_i32v  ;; print the value
+
+    local.get 3
+    local.get 1
+    i32.store16  ;; original store operation
+    )
+"""
+
+wasm_instrument_i32store8_off = """
+  (func $instrument_i32store8_off (type {}) (param i32 i32 i32)
+    (local i32 i32)
+
+    local.get 0
+    local.get 2
+    i32.add
+    local.tee 3
+    i32.const 1
+    call $myprint_i32w  ;; print the address
+
+    local.get 1
+    call $myprint_i32v  ;; print the value
+
+    local.get 3
+    local.get 1
+    i32.store8  ;; original store operation
+    )
+"""
+
 wasm_instrument_i64store = """
 (func $instrument_i64store (type {}) (param i32 i64)
     local.get 0
@@ -279,6 +354,131 @@ wasm_instrument_i64store = """
     local.get 0
     local.get 1
     i64.store  ;; original store operation
+    )
+"""
+
+wasm_instrument_i64store32 = """
+(func $instrument_i64store32 (type {}) (param i32 i64)
+    local.get 0
+    i32.const 4
+    call $myprint_i32w  ;; print the address
+
+    local.get 1
+    call $myprint_i64v  ;; print the value
+
+    local.get 0
+    local.get 1
+    i64.store32  ;; original store operation
+    )
+"""
+
+wasm_instrument_i64store16 = """
+(func $instrument_i64store16 (type {}) (param i32 i64)
+    local.get 0
+    i32.const 2
+    call $myprint_i32w  ;; print the address
+
+    local.get 1
+    call $myprint_i64v  ;; print the value
+
+    local.get 0
+    local.get 1
+    i64.store16  ;; original store operation
+    )
+"""
+
+wasm_instrument_i64store8 = """
+(func $instrument_i64store8 (type {}) (param i32 i64)
+    local.get 0
+    i32.const 1
+    call $myprint_i32w  ;; print the address
+
+    local.get 1
+    call $myprint_i64v  ;; print the value
+
+    local.get 0
+    local.get 1
+    i64.store8  ;; original store operation
+    )
+"""
+
+wasm_instrument_i64store_off = """
+  (func $instrument_i64store_off (type {}) (param i32 i64 i32)
+    (local i32 i32)
+
+    local.get 0
+    local.get 2
+    i32.add
+    local.tee 3
+    i32.const 8
+    call $myprint_i32w  ;; print the address
+
+    local.get 1
+    call $myprint_i64v  ;; print the value
+
+    local.get 3
+    local.get 1
+    i64.store  ;; original store operation
+    )
+"""
+
+wasm_instrument_i64store32_off = """
+  (func $instrument_i64store32_off (type {}) (param i32 i64 i32)
+    (local i32 i32)
+
+    local.get 0
+    local.get 2
+    i32.add
+    local.tee 3
+    i32.const 4
+    call $myprint_i32w  ;; print the address
+
+    local.get 1
+    call $myprint_i64v  ;; print the value
+
+    local.get 3
+    local.get 1
+    i64.store32  ;; original store operation
+    )
+"""
+
+wasm_instrument_i64store16_off = """
+  (func $instrument_i64store16_off (type {}) (param i32 i64 i32)
+    (local i32 i32)
+
+    local.get 0
+    local.get 2
+    i32.add
+    local.tee 3
+    i32.const 2
+    call $myprint_i32w  ;; print the address
+
+    local.get 1
+    call $myprint_i64v  ;; print the value
+
+    local.get 3
+    local.get 1
+    i64.store16  ;; original store operation
+    )
+"""
+
+wasm_instrument_i64store8_off = """
+  (func $instrument_i64store8_off (type {}) (param i32 i64 i32)
+    (local i32 i32)
+
+    local.get 0
+    local.get 2
+    i32.add
+    local.tee 3
+    i32.const 1
+    call $myprint_i32w  ;; print the address
+
+    local.get 1
+    call $myprint_i64v  ;; print the value
+
+    local.get 3
+    local.get 1
+    i64.store8  ;; original store operation
     )
 """
 

@@ -159,6 +159,8 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
             func_trace_dict[key] = [value]
 
     def glob_trace_add(key, value):
+        if len(key) == 0:
+            print('debug')
         if key in glob_trace_dict.keys():
             glob_trace_dict[key].append(value)
         else:
@@ -201,6 +203,10 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
                 l = lines[idx]
                 assert l.startswith('V: ')
                 write_value = int(l[l.find(':') + 1:].strip(), 16)
+                mask = 1
+                for i in range(write_size * 8 - 1):
+                    mask = (mask << 1) | 1
+                write_value &= mask
 
                 glob_name = ''  # find corresponding global name
                 if write_addr in lcs.PtrItem.wasm_objs_dict:
@@ -213,10 +219,10 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
                             if glob_name == name:  # if write_addr == addr:
                                 # glob_name = name
                                 break
-                    if len(glob_name) > 0:
-                        break
+                        if len(glob_name) > 0:
+                            break
 
-                if len(glob_name) != 0 and step_size != write_size:
+                if len(glob_name) != 0 and step_size < write_size:
                     # handle optimized writes in wasm binary
                     mask = 1
                     for i in range(step_size*8 - 1):
@@ -236,7 +242,8 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
                     for it in tmp_list:
                         glob_trace_add(it[0], (it[1], aux_info))
                     aux_info = ""
-
+                elif len(glob_name) != 0 and step_size > write_size:
+                    assert False, "currently do not support partial write to glob vars"
                 elif len(glob_name) != 0:
                     glob_trace_add(glob_name, (write_value, aux_info))
                     aux_info = ""
@@ -339,8 +346,8 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
                                 if glob_name == name:  # if write_addr == addr:
                                     # glob_name = name
                                     break
-                        if len(glob_name) != 0:
-                            break
+                            if len(glob_name) != 0:
+                                break
                     assert len(glob_name) != 0, "error: global {} not founded".format(hex(write_addr))
 
                     # founded the corresponding global variable and the step_size,
