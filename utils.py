@@ -5,6 +5,7 @@ from threading import Timer
 # from subprocess import Popen, PIPE, getstatusoutput
 
 import config
+import profile
 
 
 class cd:
@@ -104,4 +105,14 @@ def udf_checking(c_path: str):
     #     print('check this')
 
     return True
+
+
+def crash_checking(c_path: str, opt_level='-O0'):
+    elf_path, dwarf_path = profile.clang_dwarf(c_path, opt_level=opt_level)
+
+    output1, status = run_single_prog(elf_path)
+    if status != 0:
+        return False
+    return True
+
 

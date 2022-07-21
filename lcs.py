@@ -5,9 +5,9 @@ import sys
 class PtrItem:
     """ Write to global pointers """
 
-    mapping_dict = None
-    wasm_objs_dict = None
-    clang_objs_dict = None
+    mapping_dict = dict()
+    wasm_objs_dict = dict()
+    clang_objs_dict = dict()
 
     @staticmethod
     def set_dict(mapping_dict: dict, wasm_objs_dict: dict, clang_objs_dict: dict) -> None:
@@ -35,9 +35,9 @@ class PtrItem:
 
 class FuncItem:
     """ Function call/return """
-    mapping_dict = None
-    wasm_objs_dict = None
-    clang_objs_dict = None
+    mapping_dict = dict()
+    wasm_objs_dict = dict()
+    clang_objs_dict = dict()
 
     @staticmethod
     def set_dict(mapping_dict: dict, wasm_objs_dict: dict, clang_objs_dict: dict) -> None:

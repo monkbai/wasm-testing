@@ -19,7 +19,7 @@ def clear_glob_array_dict():
 
 
 def get_name_and_addr(glob_obj: dict):
-    """ This function could be complex to handle different array/structure/union type """
+    """ This function could be complex to handle different array/structure/union types and compiler optimizations """
     global glob_array_dict
 
     obj = glob_obj
@@ -62,7 +62,7 @@ def get_name_and_addr(glob_obj: dict):
             else:
                 assert False, "glob obj type: {} not implemented".format(obj_type)
 
-            # TODO: handle DW_OP_piece
+            # TODO: handle DW_OP_piece, the memory layout is optimized
             if 'DW_OP_piece' in obj["DW_AT_location"]:
                 if obj["DW_AT_type"].count("[") > 1:
                     return [], (0, 0, 0)  # ignore complex multiple dimension array with optimized memory layout
@@ -75,6 +75,7 @@ def get_name_and_addr(glob_obj: dict):
                 for mat in it:
                     opt_num += int(int(mat.group(1), 16) / step_size)
 
+                # generate tmp_list, which contains all elements in this array (w/ and w/o opt)
                 tmp_list = []
                 tmp_idx = 0
                 addr_info = obj["DW_AT_location"].strip('()')
@@ -95,18 +96,28 @@ def get_name_and_addr(glob_obj: dict):
                     else:
                         pass
                 assert tmp_idx == obj_num
-                obj_list = copy.deepcopy(tmp_list)
+
+                # remove optimized elements in tmp_list (addr == 0)
+                obj_list = []
                 min_addr = obj_addr + obj_num * step_size
                 max_addr = obj_addr
                 for tmp in tmp_list:
+                    addr = tmp[1]
                     if tmp[1] == 0:
-                        obj_list.remove(tmp)
+                        pass
+                    # early stop condition: current element overlaps with other objects in wasm or elf
+                    elif addr in lcs.PtrItem.wasm_objs_dict and lcs.PtrItem.wasm_objs_dict[addr][0] != tmp[0]:
+                        break
+                    elif addr in lcs.PtrItem.clang_objs_dict and lcs.PtrItem.clang_objs_dict[addr][0] != tmp[0]:
+                        break
                     else:
+                        obj_list.append(copy.deepcopy(tmp))
                         max_addr = max(tmp[1], max_addr)
                         min_addr = min(tmp[1], min_addr)
                 glob_array_dict[obj_key] = (obj_list, (min_addr, max_addr, step_size))
                 return obj_list, (min_addr, max_addr, step_size)
 
+            # the layout is not optimized
             dim_len = len(array_dim)
             for count in range(obj_num):
                 tmp_count = count

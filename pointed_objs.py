@@ -126,7 +126,7 @@ def get_pointed_objs_mapping(c_path: str, elf_path: str, wat_path: str, clang_op
     mapping_dict = dict()
 
     mapping_list = globs_mapping + str_mapping
-    for name, wasm_addr, clang_addr in mapping_list:
+    for name, wasm_addr, clang_addr in mapping_list:  # this for loop removes overlap (inconsciently)
         wasm_objs_dict[wasm_addr] = (name, clang_addr)
         clang_objs_dict[clang_addr] = (name, wasm_addr)
         mapping_dict[(wasm_addr, clang_addr)] = name

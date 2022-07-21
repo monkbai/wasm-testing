@@ -323,7 +323,9 @@ def _instrument_func_call(func_txt: str, func_name: str, func_name2offset: dict,
                     param_type = param["DW_AT_type"]
                     if 'int64' in param_type:
                         l += prefix_space + 'call $myprint_i64p\n'
-                    elif 'char*' in param_type or '"int"' in param_type or 'int32' in param_type or 'int8' in param_type:  # pointer in wasm is i32
+                    elif 'char*' in param_type or '"int"' in param_type:  # pointer in wasm is i32
+                        l += prefix_space + 'call $myprint_i32p\n'
+                    elif 'int32' in param_type or 'int16' in param_type or 'int8' in param_type:  # smallest unit is i32
                         l += prefix_space + 'call $myprint_i32p\n'
                     else:
                         assert False, "param type not implemented"
