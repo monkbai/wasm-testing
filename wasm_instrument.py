@@ -155,6 +155,7 @@ def add_utility_funcs(type_sec: str, type_ids: list, data_offsets: list, stdout_
     type_sec += wasm_code.wasm_myprint_i64p.format(type_ids[2], data_offsets[4])
     type_sec += wasm_code.wasm_myprint_i64v.format(type_ids[2], data_offsets[5])
     type_sec += wasm_code.wasm_myprint_i32r.format(type_ids[3], data_offsets[6])
+    type_sec += wasm_code.wasm_myprint_i64r.format(type_ids[9], data_offsets[8])
     type_sec += wasm_code.wasm_myprint_i32id.format(type_ids[1], data_offsets[7])
     type_sec += wasm_code.wasm_myprint_call.format(type_ids[1])
 
@@ -201,6 +202,11 @@ def _instrument_return(func_txt: str, func_name: str, func_name2offset: dict):
         l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
         l += prefix_space + "i32.const {}\n".format(func_name2offset[func_name]) + prefix_space + "call $myprint_call\n"
         l += prefix_space + "call $myprint_i32r"
+        func_txt = func_txt[:idx] + '\n' + l + func_txt[idx:]
+    elif r_type == "i64":
+        l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
+        l += prefix_space + "i32.const {}\n".format(func_name2offset[func_name]) + prefix_space + "call $myprint_call\n"
+        l += prefix_space + "call $myprint_i64r"
         func_txt = func_txt[:idx] + '\n' + l + func_txt[idx:]
     elif r_num > 0:
         assert False, "return value type not implemented"

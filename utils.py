@@ -69,7 +69,7 @@ def csmith_generate(c_path: str):
 
         # avoid huge test case, which is hard to locate bug statement
         file_size = os.path.getsize(c_path)
-        if file_size >= 1024 * 15:  # TODO: size limit 10KB
+        if file_size >= 1024 * 10:  # TODO: size limit 10KB
             continue
 
         status, output = cmd(config.csmith_compile_cmd.format(c_path, elf_path))

@@ -7,7 +7,8 @@ wasm_type_def = """
   (type (;{};) (func (param i32 i32 i32)))
   (type (;{};) (func (param i32 i32) (result i32)))
   (type (;{};) (func (param i32 i32 i32) (result i32)))
-  (type (;{};) (func (param i32 i64 i32) ))
+  (type (;{};) (func (param i32 i64 i32) ))\
+  (type (;{};) (func (param i64) (result i64)))
 """
 
 
@@ -219,6 +220,32 @@ wasm_myprint_i32r = """
     i32.add
     global.set $__stack_pointer
     
+    local.get 0)
+"""
+
+wasm_myprint_i64r = """
+  (func $myprint_i64r (type {}) (param i64) (result i64)
+    (local i32)
+    global.get $__stack_pointer
+    i32.const 64
+    i32.sub
+    local.tee 1
+    global.set $__stack_pointer  ;; lift stack pointer
+
+    local.get 1
+    local.get 0
+    i64.store ;; store address in stack mem
+
+    i32.const {}
+    local.get 1
+    call $iprintf  ;; print the address
+    drop
+
+    local.get 1
+    i32.const 64  ;; restore stack pointer
+    i32.add
+    global.set $__stack_pointer
+
     local.get 0)
 """
 
@@ -490,7 +517,8 @@ wasm_data_str = """
   (data $.str.p64 (i32.const {}) "P: 0x%llx\\0a\\00")
   (data $.str.v64 (i32.const {}) "V: 0x%llx\\0a\\00")
   (data $.str.r32 (i32.const {}) "R: 0x%lx\\0a\\00")
-  (data $.str.id32 (i32.const {}) "ID: %d\\0a\\00")"""
+  (data $.str.id32 (i32.const {}) "ID: %d\\0a\\00")
+  (data $.str.r64 (i32.const {}) "R: 0x%llx\\0a\\00")"""
 
 wasm_func_names_str = """
   (data $.str.{} (i32.const {}) "${}\\0a\\00")"""

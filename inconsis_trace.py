@@ -15,11 +15,11 @@ def get_one_csmith(c_path: str):
 
 
 def main():
-    file_idx = 78
+    file_idx = 90
     while file_idx < 1001:
         c_path = os.path.join('./inconsis_trace/testcases', 'test{}.c'.format(file_idx))
         # get_one_csmith(c_path)
-        glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(c_path, clang_opt_level='-O0', emcc_opt_level='-O2')
+        glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(c_path, clang_opt_level='-O0', emcc_opt_level='-O0')
         output1, status = utils.run_single_prog("./inconsis_trace/testcases/test{}.out".format(file_idx))
         output2, status = utils.run_single_prog("node ./inconsis_trace/testcases/test{}.js".format(file_idx))
         if len(glob_correct) == 0 and len(func_correct) == 0:

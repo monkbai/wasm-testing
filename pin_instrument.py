@@ -75,6 +75,7 @@ def print_func_arg_size(func_objs: list, param_dict: dict, func_param_file: str)
 
             f.write(hex(func_addr) + '\n')
             f.write(str(len(param_list)) + '\n')
+            arg_print_count = 0
             for param in param_list:
                 arg_type = param["DW_AT_type"]
                 arg_type = arg_type.replace('const ', '')
@@ -89,7 +90,7 @@ def print_func_arg_size(func_objs: list, param_dict: dict, func_param_file: str)
                     elif "int8" in arg_type or "char" in arg_type:
                         arg_size = 1
                     elif 'char' not in arg_type and 'short' not in arg_type and 'int' not in arg_type and 'long' not in arg_type:
-                        continue  # ignore complex structure/union
+                        arg_size = 8  # ignore complex structure/union
                     else:
                         assert False, "var type: {} not implemented".format(arg_type)
                 elif '[' in arg_type or '*' in arg_type:  # array or pointer
@@ -97,6 +98,8 @@ def print_func_arg_size(func_objs: list, param_dict: dict, func_param_file: str)
                 else:
                     assert False, "arg type: {} not implemented".format(arg_type)
                 f.write(str(arg_size) + '\n')
+                arg_print_count += 1
+            assert arg_print_count == len(param_list), "Error: not all function arguments handled"
         f.close()
 
 

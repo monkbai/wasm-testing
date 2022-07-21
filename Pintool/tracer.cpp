@@ -131,6 +131,7 @@ VOID RecordArgs(VOID * ip, ADDRINT rdi, ADDRINT rsi, ADDRINT rdx, ADDRINT rcx, A
         }
         else{
             fprintf(trace, "P: unimplemented arg_size: %d\n", *it);
+            exit(-1);
         }
         idx += 1;
     }
