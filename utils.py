@@ -108,9 +108,13 @@ def udf_checking(c_path: str):
 
 
 def crash_checking(c_path: str, opt_level='-O0'):
+    global timeout_sec
+    timeout_tmp = timeout_sec
+    timeout_sec = 1
     elf_path, dwarf_path = profile.clang_dwarf(c_path, opt_level=opt_level)
 
-    output1, status = run_single_prog(elf_path)
+    output1, status = run_single_prog('timeout 1 ' + elf_path)
+    timeout_sec = timeout_tmp
     if status != 0:
         return False
     return True

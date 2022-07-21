@@ -239,6 +239,12 @@ def _instrument_func_line(func_txt: str):
             l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
             l += prefix_space + "call $instrument_i64store  ;; i64.store"
             new_func_txt += l + '\n'
+        elif mat := re.match(r'i64\.store align=(\d+)', l):  # the same instrumentation as i64.store
+            # the alignment will be handled in generalize_wasm_trace()
+            align_num = int(mat.group(1))
+            l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
+            l += prefix_space + "call $instrument_i64store  ;; i64.store"
+            new_func_txt += l + '\n'
         elif l == 'i64.store32':
             l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
             l += prefix_space + "call $instrument_i64store32  ;; i64.store32"

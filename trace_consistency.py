@@ -236,7 +236,9 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
                         if len(glob_name) > 0:
                             break
 
-                if len(glob_name) != 0 and step_size < write_size:
+                if not step_size:  # ignore complex struct
+                    pass
+                elif len(glob_name) != 0 and step_size < write_size:
                     # handle optimized writes in wasm binary
                     mask = 1
                     for i in range(step_size*8 - 1):
@@ -255,15 +257,16 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
 
                     for it in tmp_list:
                         glob_trace_add(it[0], (it[1], aux_info))
-                    aux_info = ""
+
                 elif len(glob_name) != 0 and step_size > write_size:
                     # assert False, "currently do not support partial write to glob vars"
                     aux_info = "OPT\n" + aux_info
                     glob_trace_add(glob_name, (write_value, aux_info))
-                    aux_info = ""
+
                 elif len(glob_name) != 0:
                     glob_trace_add(glob_name, (write_value, aux_info))
-                    aux_info = ""
+
+                aux_info = ""
 
             elif l.startswith('P: ') or l.startswith('V: '):
                 assert False, 'error during parsing raw wasm trace.'
@@ -671,6 +674,10 @@ def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
     (wasm_func_objs, wasm_param_dict, wasm_func_names_list), \
         (clang_func_objs, clang_param_dict, clang_func_names_list) = profile.collect_funcs(c_src_path, clang_opt_level, emcc_opt_level)
     wasm_globs_all = profile.get_wasm_globs(c_src_path, emcc_opt_level)
+
+    if len(wasm_globs) == 0:
+        print("No globs, skip this case")
+        return [], [], [], []
 
     # compile
     wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_src_path, opt_level=emcc_opt_level)
