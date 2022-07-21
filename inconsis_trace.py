@@ -15,7 +15,7 @@ def get_one_csmith(c_path: str):
 
 
 def main():
-    file_idx = 22
+    file_idx = 28
     while file_idx < 1001:
         c_path = os.path.join('./inconsis_trace/testcases', 'test{}.c'.format(file_idx))
         get_one_csmith(c_path)

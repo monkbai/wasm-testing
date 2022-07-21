@@ -71,7 +71,7 @@ def get_name_and_addr(glob_obj: dict):
 
                 # get #optimized elements
                 opt_num = 0
-                it = re.finditer(r"DW_OP_piece (0x\d+)", obj["DW_AT_location"].strip('()'))
+                it = re.finditer(r"DW_OP_piece (0x\w+)", obj["DW_AT_location"].strip('()'))
                 for mat in it:
                     opt_num += int(int(mat.group(1), 16) / step_size)
 
@@ -219,6 +219,9 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
                             if glob_name == name:  # if write_addr == addr:
                                 # glob_name = name
                                 break
+                            elif write_addr == addr:
+                                glob_name = name if len(glob_name) == 0 else glob_name
+                                break
                         if len(glob_name) > 0:
                             break
 
@@ -231,7 +234,7 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
                     while write_size > 0:
                         for name, addr in obj_list:
                             if write_addr == addr:
-                                glob_name = name
+                                glob_name = name if len(glob_name) == 0 else glob_name
                                 break
                         tmp_list.append((glob_name, write_value & mask))
                         glob_name = ''
@@ -243,7 +246,10 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
                         glob_trace_add(it[0], (it[1], aux_info))
                     aux_info = ""
                 elif len(glob_name) != 0 and step_size > write_size:
-                    assert False, "currently do not support partial write to glob vars"
+                    # assert False, "currently do not support partial write to glob vars"
+                    aux_info = "OPT\n" + aux_info
+                    glob_trace_add(glob_name, (write_value, aux_info))
+                    aux_info = ""
                 elif len(glob_name) != 0:
                     glob_trace_add(glob_name, (write_value, aux_info))
                     aux_info = ""
@@ -346,6 +352,9 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
                                 if glob_name == name:  # if write_addr == addr:
                                     # glob_name = name
                                     break
+                                elif write_addr == addr:
+                                    glob_name = name if len(glob_name) == 0 else glob_name
+                                    break
                             if len(glob_name) != 0:
                                 break
                     assert len(glob_name) != 0, "error: global {} not founded".format(hex(write_addr))
@@ -379,6 +388,11 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
                                 if glob_name == name:  # if write_addr == addr:
                                     # glob_name = name
                                     break
+                                elif write_addr == addr:
+                                    glob_name = name if len(glob_name) == 0 else glob_name
+                                    break
+                            if len(glob_name) > 0:
+                                break  # must, always break
 
                     if len(glob_name) != 0:
                         # it's possible len(glob_name)==0, some complex cases are not handled
@@ -436,7 +450,8 @@ def trace_check_glob_correct(wasm_glob_trace_dict: dict, clang_glob_trace_dict: 
             for v in clang_trace_backup:
                 clang_trace.append(lcs.PtrItem(ptr_name=glob_name, ptr_value=v))
 
-        if glob_trace[-1] != clang_trace[-1] and not clang_glob_trace_dict[glob_name][-1][1].startswith("OPT\n"):  # compiler optimization may only update part of the var
+        if glob_trace[-1] != clang_trace[-1] and not clang_glob_trace_dict[glob_name][-1][1].startswith("OPT\n"):
+            # TODO: re-consider the compiler optimization that may only update part of the var (e.g., OPT mark)
             inconsistent_list.append(glob_name)
             print('>Glob trace inconsistency founded.')
             print('\tglob_name: {}, wasm_last_write: {}, clang_last_write: {}'.format(glob_name, glob_trace[-1], clang_trace[-1]))
@@ -671,7 +686,7 @@ def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
     # trace consistency check
     if len(wasm_globs) > 0:
         glob_correct_inconsistent_list = \
-            trace_check_glob_correct(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs)
+            trace_check_glob_correct(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs, case2_check=True)
     else:
         glob_correct_inconsistent_list = []
     func_correct_inconsistent_list = \
