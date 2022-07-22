@@ -73,6 +73,6 @@ def fix_recheck():
 
 
 if __name__ == '__main__':
-    fix_recheck()
-    exit(0)
+    # fix_recheck()
+    # exit(0)
     main()

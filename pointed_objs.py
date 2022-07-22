@@ -4,6 +4,7 @@
 import re
 import os
 
+import lcs
 import utils
 import profile
 import trace_consistency
@@ -118,6 +119,16 @@ def get_glob_mapping(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2
 
 
 def get_pointed_objs_mapping(c_path: str, elf_path: str, wat_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
+    """ this function aims to remove overlapped global variables """
+    mapping_dict, wasm_objs_dict, clang_objs_dict = _get_pointed_objs_mapping(c_path, elf_path, wat_path, clang_opt_level, emcc_opt_level)
+    lcs.FuncItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
+    lcs.PtrItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
+
+    mapping_dict, wasm_objs_dict, clang_objs_dict = _get_pointed_objs_mapping(c_path, elf_path, wat_path, clang_opt_level, emcc_opt_level)
+    return mapping_dict, wasm_objs_dict, clang_objs_dict
+
+
+def _get_pointed_objs_mapping(c_path: str, elf_path: str, wat_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
     globs_mapping = get_glob_mapping(c_path, clang_opt_level, emcc_opt_level)
     str_mapping = get_str_mapping(elf_path, wat_path)
 

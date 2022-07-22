@@ -477,12 +477,18 @@ def trace_check_glob_correct(wasm_glob_trace_dict: dict, clang_glob_trace_dict: 
                 glob_key = glob_name
                 if '[' in glob_key:
                     glob_key = glob_key[:glob_key.find('[')]  # an array element -> array name
+
                 # exists in wasm globs?
-                for obj in wasm_globs:
-                    obj = obj[1]
-                    if obj["DW_AT_name"] == '("{}")'.format(glob_key):
+                for glob in wasm_globs:
+                    glob = glob[1]
+                    if glob["DW_AT_name"] == '("{}")'.format(glob_key):
                         break
-                if obj["DW_AT_name"] == '("{}")'.format(glob_key):  # exist
+                # exists in wasm objs?
+                for obj in wasm_globs:
+                    if obj[0] == glob_name:
+                        break
+
+                if glob["DW_AT_name"] == '("{}")'.format(glob_key) and obj[0] == glob_name:  # exist
                     inconsistent_list.append(glob_name)
                     print('>Missing glob trace founded.')
                     print('\tglob_name: {}'.format(glob_name))
