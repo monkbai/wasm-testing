@@ -44,5 +44,35 @@ def main():
     print(file_idx)
 
 
+def fix_recheck():
+    fixed_list = []
+    file_idx = 0
+    while file_idx < 270:
+        c_path = os.path.join('./inconsis_trace/FPs', 'test{}.c'.format(file_idx))
+        if not os.path.exists(c_path):
+            file_idx += 1
+            continue
+        # get_one_csmith(c_path)
+        glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(c_path, clang_opt_level='-O0', emcc_opt_level='-O2')
+        output1, status = utils.run_single_prog("./inconsis_trace/FPs/test{}.out".format(file_idx))
+        output2, status = utils.run_single_prog("node ./inconsis_trace/FPs/test{}.js".format(file_idx))
+        if len(glob_correct) == 0 and len(func_correct) == 0:
+            fixed_list.append(file_idx)
+        else:
+            print(file_idx)
+
+        status, output = utils.cmd("rm ./inconsis_trace/FPs/test{}.c.*".format(file_idx))
+        status, output = utils.cmd("rm ./inconsis_trace/FPs/test{}.out".format(file_idx))
+        status, output = utils.cmd("rm ./inconsis_trace/FPs/*.js".format(file_idx))
+        status, output = utils.cmd("rm ./inconsis_trace/FPs/*.wasm".format(file_idx))
+        status, output = utils.cmd("rm ./inconsis_trace/FPs/*.wat".format(file_idx))
+        status, output = utils.cmd("rm ./inconsis_trace/FPs/*.dwarf".format(file_idx))
+        status, output = utils.cmd("rm ./inconsis_trace/FPs/*.trace".format(file_idx))
+        file_idx += 1
+    print(fixed_list)
+
+
 if __name__ == '__main__':
+    fix_recheck()
+    exit(0)
     main()

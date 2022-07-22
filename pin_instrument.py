@@ -41,6 +41,8 @@ def print_glob_addr(glob_objs:list, glob_addr_file: str):
                 for i in range(var_num):
                     f.write(hex(addr + i * step_size) + '\n')
             elif '[' not in var_type:  # record pointer values, but ignore them during trace consistency checking
+                if 'char' not in var_type and 'short' not in var_type and 'int' not in var_type and 'long' not in var_type:
+                    continue  # ignore complex struct/union, which cannot be well recorded currently
                 f.write(hex(addr) + '\n')
             elif 'const' in var_type:
                 continue
