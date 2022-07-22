@@ -196,10 +196,14 @@ def collect_glob_vars(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O
     new_clang_globs = []
     for obj in clang_glob_objs:
         if obj[1]["DW_AT_name"] in wasm_name_list:
-            new_clang_globs.append(obj)
             for wasm_obj in wasm_glob_objs:
                 if wasm_obj[1]["DW_AT_name"] == obj[1]["DW_AT_name"]:
-                    new_wasm_globs.append(wasm_obj)
+                    # additional check
+                    # if wasm glob has 'DW_OP_deref_size 0x1' in 'DW_AT_location' attribute, we can ignore this glob
+                    # this remove FPss caused by `select` wasm instruction or constant propagation
+                    if 'DW_OP_deref_size 0x1' not in wasm_obj[1]["DW_AT_location"]:
+                        new_wasm_globs.append(wasm_obj)
+                        new_clang_globs.append(obj)
                     break
             continue
 
