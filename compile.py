@@ -7,6 +7,10 @@ from threading import Timer
 # from subprocess import Popen, PIPE, getstatusoutput
 
 
+import utils
+import profile
+
+
 class cd:
     def __init__(self, newPath):
         self.newPath = os.path.expanduser(newPath)
@@ -147,7 +151,31 @@ def fuzz():
     print(error_list)
 
 
+def post_check(dir_path: str):
+    tp_list = []  # True Positives
+    file_idx = 0
+    while file_idx < 260:
+        c_path = os.path.join(dir_path, 'test{}.c'.format(file_idx))
+        if not os.path.exists(c_path):
+            file_idx += 1
+            continue
+
+        wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_path, opt_level='-O2')
+        elf_path, dwarf_path = profile.clang_dwarf(c_path, opt_level='-O2')
+        output1, status = utils.run_single_prog(os.path.join(dir_path, 'test{}.out'.format(file_idx)))
+        output2, status = utils.run_single_prog("node {}".format(os.path.join(dir_path, 'test{}.js'.format(file_idx))))
+        if output1 != output2:
+            tp_list.append(file_idx)
+        else:
+            # utils.cmd("mv {} {}".format(c_path, os.path.join(dir_path, "UndefinedBehaviors")))
+            pass
+
+        file_idx += 1
+    print(tp_list)
+
+
 if __name__ == '__main__':
+    post_check("/home/tester/Documents/WebAssembly/wasm-compiler-testing/inconsis_trace/bug_cases")
     # out1 = csmith_generate('./testcases/test.c', './testcases/test.out')
     # print(out1)
     # out2 = emcc_generate('./testcases/test.c', './testcases/test.wasm', './testcases/test.js')

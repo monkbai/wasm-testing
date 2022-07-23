@@ -5,10 +5,13 @@ csmith_cmd = csmith_path + " --max-funcs 5 --no-safe-math --max-expr-complexity 
 csmith_runtime = '/home/tester/Documents/csmith/runtime'
 csmith_compile_cmd = 'gcc -O -g -w {} -I' + csmith_runtime + ' -o {}'
 
+creduce_path = '/home/tester/Documents/creduce/build/creduce/creduce'
+
 clang_ir_cmd = "clang-12 -c -w -g -O0 -emit-llvm -S {} -o {}"
 clang_ir_cmd2 = "clang-12 -c -w -g -O0 -emit-llvm -S -I/home/tester/Documents/csmith/runtime {} -o {}"
 clang_dwarf_cmd2 = "clang-12 -w -g -O0 -I/home/tester/Documents/csmith/runtime {} -o {}"
 clang_dwarf_opt_cmd = "clang-12 -w -g {} -I/home/tester/Documents/csmith/runtime {} -o {}"
+# clang_dwarf_opt_cmd = "gcc -no-pie -fcf-protection=none -w -g {} -I/home/tester/Documents/csmith/runtime {} -o {}"  # -no-pie is important
 
 clang_tidy_cmd = "clang-tidy-12 {} -- -I" + csmith_runtime
 
