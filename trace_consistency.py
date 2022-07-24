@@ -6,6 +6,7 @@ import copy
 import lcs
 import profile
 import pointed_objs
+import utils
 import wasm_instrument
 import pin_instrument
 
@@ -503,9 +504,10 @@ def trace_check_glob_perf(wasm_glob_trace_dict: dict, clang_glob_trace_dict: dic
         assert obj["DW_AT_name"] == '("{}")'.format(glob_key)
 
         if glob_name not in clang_glob_trace_dict:
-            inconsistent_list.append(glob_name)
-            print('>Redundant glob trace founded.')
-            print('\tglob_name: {}'.format(glob_name))
+            if 'crc32' not in glob_name:
+                inconsistent_list.append(glob_name)
+                print('>Redundant glob trace founded.')
+                print('\tglob_name: {}'.format(glob_name))
             continue
 
         clang_trace = clang_glob_trace_dict[glob_name]
@@ -679,6 +681,8 @@ def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
 
     # Before checking
     wat_path = wasm_path[:-5] + '.wat'
+    if not os.path.exists(wat_path):
+        wat_path = utils.wasm2wat(wasm_path)
     mapping_dict, wasm_objs_dict, clang_objs_dict = pointed_objs.get_pointed_objs_mapping(c_src_path, elf_path, wat_path, clang_opt_level, emcc_opt_level)
     lcs.FuncItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
     lcs.PtrItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)

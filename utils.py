@@ -84,6 +84,24 @@ def csmith_generate(c_path: str):
     status, output = cmd("rm {}".format(elf_path))
 
 
+def wasm2wat(wasm_path: str):
+    global project_dir
+
+    wasm_path = os.path.abspath(wasm_path)
+    dir_path = os.path.dirname(wasm_path)
+    assert wasm_path.endswith('.wasm')
+    wat_path = wasm_path[:-5] + '.wat'
+
+    tmp_dir = project_dir
+    project_dir = dir_path
+
+    status, output = cmd(config.wasm2wat_cmd.format(wasm_path, wat_path))
+
+    project_dir = tmp_dir
+
+    return wat_path
+
+
 def udf_checking(c_path: str):
     """ Checking for undefined behaviors
         1. Assigned value is garbage or undefined [clang-analyzer-core.uninitialized.Assign]

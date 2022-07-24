@@ -99,16 +99,21 @@ def get_glob_mapping(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2
             wasm_globs_dict[name] = addr
 
     clang_globs_dict = dict()
+    # first using nm to get reliable symbol names and addresses
+    nm_addr = []
     elf_path = c_src_path[:-2] + '.out'
     nm_list = nm.get_nm_list(elf_path, clang_globs)
     for addr, name in nm_list:
         clang_globs_dict[name] = addr
-    # trace_consistency.clear_glob_array_dict()
-    # for obj in clang_globs:
-    #     obj = obj[1]
-    #     obj_list, (min_addr, max_addr, step_size) = trace_consistency.get_name_and_addr(obj)
-    #     for name, addr in obj_list:
-    #         clang_globs_dict[name] = addr
+        nm_addr.append(addr)
+    # then try to parse dwarf info to get others
+    trace_consistency.clear_glob_array_dict()
+    for obj in clang_globs:
+        obj = obj[1]
+        obj_list, (min_addr, max_addr, step_size) = trace_consistency.get_name_and_addr(obj)
+        for name, addr in obj_list:
+            if name not in clang_globs_dict and addr not in nm_addr:
+                clang_globs_dict[name] = addr
 
     for glob_name, addr in wasm_globs_dict.items():
         if glob_name in clang_globs_dict:
