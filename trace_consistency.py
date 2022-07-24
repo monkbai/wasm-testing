@@ -20,6 +20,7 @@ def clear_glob_array_dict():
 
 def get_name_and_addr(glob_obj: dict):
     """ This function could be complex to handle different array/structure/union types and compiler optimizations """
+    """ should be used for wasm only """
     global glob_array_dict
 
     obj = glob_obj
@@ -65,7 +66,7 @@ def get_name_and_addr(glob_obj: dict):
             # TODO: handle DW_OP_piece, the memory layout is optimized
             if 'DW_OP_piece' in obj["DW_AT_location"]:
                 if obj["DW_AT_type"].count("[") > 1:
-                    return [], (0, 0, 0)  # ignore complex multiple dimension array with optimized memory layout
+                    return [], (0, 0, step_size)  # ignore complex multiple dimension array with optimized memory layout
 
                 assert obj["DW_AT_type"].count("[") == 1
 
@@ -136,7 +137,7 @@ def get_name_and_addr(glob_obj: dict):
             glob_array_dict[obj_key] = (obj_list, (obj_addr, obj_addr+(obj_num-1)*step_size, step_size))
             return obj_list, (obj_addr, obj_addr+(obj_num-1)*step_size, step_size)
         elif '*' in obj_type and '[' in obj_type:
-            return [], (0, 0, 0)  # pointer array, ignore
+            return [], (0, 0, 8)  # pointer array, ignore
         else:
             assert False
 
@@ -352,61 +353,46 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
                     l = lines[idx]
                     assert l.startswith('V: ')
                     write_value_con = int(l[l.find(':') + 1:].strip(), 16)
+                    write_value = write_value_con << 64 + write_value
 
-                    # TODO: 16 bytes values, exist in clang O3 binaries
+                    # 16 bytes values, exist in clang/gcc O3 binaries (xmm word)
                     # writes to consecutive elements in an array
-                    glob_name = ''  # find corresponding global name
-                    if write_addr in lcs.PtrItem.clang_objs_dict:
-                        glob_name, wasm_addr = lcs.PtrItem.clang_objs_dict[write_addr]
-                    for obj in clang_globs:
-                        obj = obj[1]
-                        obj_list, (min_addr, max_addr, step_size) = get_name_and_addr(obj)
-                        if min_addr <= write_addr <= max_addr:
-                            for name, addr in obj_list:
-                                if glob_name == name:  # if write_addr == addr:
-                                    # glob_name = name
-                                    break
-                                elif write_addr == addr:
-                                    glob_name = name if len(glob_name) == 0 else glob_name
-                                    break
-                            if len(glob_name) != 0:
+                    while write_size > 0:
+                        glob_name = ''  # find corresponding global name
+                        if write_addr in lcs.PtrItem.clang_objs_dict:
+                            glob_name, wasm_addr = lcs.PtrItem.clang_objs_dict[write_addr]
+                            glob_key = glob_name if '[' not in glob_name else glob_name[:glob_name.find('[')]
+                        for obj in clang_globs:
+                            obj = obj[1]
+                            if obj["DW_AT_name"].strip('"()') == glob_key:
+                                obj_list, (min_addr, max_addr, step_size) = get_name_and_addr(obj)  # only to get step_size
                                 break
-                    assert len(glob_name) != 0, "error: global {} not founded".format(hex(write_addr))
 
-                    # founded the corresponding global variable and the step_size,
-                    # now split the 16 bytes into consecutive writes
-                    if step_size == 8:
-                        tmp_list = [(write_addr, write_value), (write_addr+8, write_value_con)]
-                    elif step_size == 4:
-                        tmp_list = [(write_addr, write_value & 0xffffffff), (write_addr+4, (write_value >> 32)),
-                                    (write_addr+8, write_value_con & 0xffffffff), (write_addr+12, (write_value_con >> 32))]
-                    else:
-                        pass  # complex var
-
-                    if step_size:
-                        for w_addr, w_val in tmp_list:
-                            for name, addr in obj_list:
-                                if w_addr == addr:
-                                    glob_trace_add(name, (w_val, aux_info))
-                                    break
-                        aux_info = ""
+                        # founded the corresponding global variable and the step_size,
+                        # now split the 16 bytes into consecutive writes
+                        if step_size == 8:
+                            glob_trace_add(glob_name, (write_value & 0xffffffffffffffff, aux_info))
+                            write_value = write_value >> 64
+                            write_size -= step_size
+                            write_addr += 8
+                        elif step_size == 4:
+                            glob_trace_add(glob_name, (write_value & 0xffffffff, aux_info))
+                            write_value = write_value >> 32
+                            write_size -= step_size
+                            write_addr += 4
+                        else:
+                            assert False
+                    aux_info = ""
                 else:
                     glob_name = ''  # find corresponding global name
                     if write_addr in lcs.PtrItem.clang_objs_dict:
                         glob_name, wasm_addr = lcs.PtrItem.clang_objs_dict[write_addr]
+                        glob_key = glob_name if '[' not in glob_name else glob_name[:glob_name.find('[')]
                     for obj in clang_globs:
                         obj = obj[1]
-                        obj_list, (min_addr, max_addr, step_size) = get_name_and_addr(obj)
-                        if min_addr <= write_addr <= max_addr:
-                            for name, addr in obj_list:
-                                if glob_name == name:  # if write_addr == addr:
-                                    # glob_name = name
-                                    break
-                                elif write_addr == addr:
-                                    glob_name = name if len(glob_name) == 0 else glob_name
-                                    break
-                            if len(glob_name) > 0:
-                                break  # must, always break
+                        if obj["DW_AT_name"].strip('"()') == glob_key:
+                            obj_list, (min_addr, max_addr, step_size) = get_name_and_addr(obj)  # only to get step_size
+                            break
 
                     if len(glob_name) != 0:
                         # it's possible len(glob_name)==0, some complex cases are not handled
@@ -674,6 +660,8 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
 
 
 def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
+    # TODO: use nm -n for clang/gcc binary
+
     print("\nTrace Consistency Checking for {}...".format(c_src_path))
     # profile, get dwarf information of global variables and function arguments
     wasm_globs, clang_globs = profile.collect_glob_vars(c_src_path, clang_opt_level, emcc_opt_level)
@@ -689,16 +677,16 @@ def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
     wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_src_path, opt_level=emcc_opt_level)
     elf_path, dwarf_path = profile.clang_dwarf(c_src_path, opt_level=clang_opt_level)
 
-    # get trace
-    wasm_instrument.instrument(wasm_path, wasm_globs_all, wasm_func_objs, wasm_param_dict, wasm_path, opt_level=emcc_opt_level)
-    clang_raw_trace_path = pin_instrument.instrument(c_src_path, clang_globs, clang_func_objs, clang_param_dict, elf_path)
-    wasm_raw_trace_path = wasm_instrument.run_wasm(js_path)
-
     # Before checking
     wat_path = wasm_path[:-5] + '.wat'
     mapping_dict, wasm_objs_dict, clang_objs_dict = pointed_objs.get_pointed_objs_mapping(c_src_path, elf_path, wat_path, clang_opt_level, emcc_opt_level)
     lcs.FuncItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
     lcs.PtrItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
+
+    # get trace
+    wasm_instrument.instrument(wasm_path, wasm_globs_all, wasm_func_objs, wasm_param_dict, wasm_path, opt_level=emcc_opt_level)
+    clang_raw_trace_path = pin_instrument.instrument(c_src_path, clang_globs, clang_func_objs, clang_param_dict, elf_path)
+    wasm_raw_trace_path = wasm_instrument.run_wasm(js_path)
 
     # trace generalization
     wasm_glob_trace_dict, wasm_func_trace_dict = generalize_wasm_trace(wasm_raw_trace_path,

@@ -4,6 +4,7 @@
 import re
 import os
 
+import nm
 import lcs
 import utils
 import profile
@@ -98,19 +99,23 @@ def get_glob_mapping(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2
             wasm_globs_dict[name] = addr
 
     clang_globs_dict = dict()
-    trace_consistency.clear_glob_array_dict()
-    for obj in clang_globs:
-        obj = obj[1]
-        obj_list, (min_addr, max_addr, step_size) = trace_consistency.get_name_and_addr(obj)
-        for name, addr in obj_list:
-            clang_globs_dict[name] = addr
+    elf_path = c_src_path[:-2] + '.out'
+    nm_list = nm.get_nm_list(elf_path, clang_globs)
+    for addr, name in nm_list:
+        clang_globs_dict[name] = addr
+    # trace_consistency.clear_glob_array_dict()
+    # for obj in clang_globs:
+    #     obj = obj[1]
+    #     obj_list, (min_addr, max_addr, step_size) = trace_consistency.get_name_and_addr(obj)
+    #     for name, addr in obj_list:
+    #         clang_globs_dict[name] = addr
 
     for glob_name, addr in wasm_globs_dict.items():
         if glob_name in clang_globs_dict:
             globs_mapping.append((glob_name, addr, clang_globs_dict[glob_name]))
 
     trace_consistency.clear_glob_array_dict()
-    return globs_mapping
+    return globs_mapping, wasm_globs_dict, clang_globs_dict
 
 
 # ==================
@@ -129,7 +134,7 @@ def get_pointed_objs_mapping(c_path: str, elf_path: str, wat_path: str, clang_op
 
 
 def _get_pointed_objs_mapping(c_path: str, elf_path: str, wat_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
-    globs_mapping = get_glob_mapping(c_path, clang_opt_level, emcc_opt_level)
+    globs_mapping, wasm_globs_dict, clang_globs_dict = get_glob_mapping(c_path, clang_opt_level, emcc_opt_level)
     str_mapping = get_str_mapping(elf_path, wat_path)
 
     wasm_objs_dict = dict()
@@ -142,6 +147,12 @@ def _get_pointed_objs_mapping(c_path: str, elf_path: str, wat_path: str, clang_o
         clang_objs_dict[clang_addr] = (name, wasm_addr)
         mapping_dict[(wasm_addr, clang_addr)] = name
         mapping_dict[(clang_addr, wasm_addr)] = name
+    for wasm_name, wasm_addr in wasm_globs_dict.items():
+        if wasm_addr not in wasm_objs_dict:
+            wasm_objs_dict[wasm_addr] = (wasm_name, 0)
+    for clang_name, clang_addr in clang_globs_dict.items():
+        if clang_addr not in clang_objs_dict:
+            clang_objs_dict[clang_addr] = (clang_name, 0)
     return mapping_dict, wasm_objs_dict, clang_objs_dict
 
 

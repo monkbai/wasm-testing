@@ -2,54 +2,17 @@ import re
 import os
 import sys
 
+import lcs
 import pintool
 import utils
 import config
 import profile
 
 
-def print_glob_addr(glob_objs:list, glob_addr_file: str):
+def print_glob_addr(glob_objs: list, glob_addr_file: str):
     with open(glob_addr_file, 'w') as f:
-        for obj in glob_objs:
-            obj = obj[1]
-            addr = int(re.search(r"DW_OP_addr (\w+)", obj["DW_AT_location"]).group(1), 16)
-            var_type = obj["DW_AT_type"]
-            var_type = var_type.replace('volatile ', '')
-            if mat := re.search(r'\(0x[\da-fA-F]+\s"(\w+)((\[\d+])+)"\)', var_type):
-                var_type = mat.group(1)
-                array_dim = mat.group(2)
-                array_dim = array_dim.replace('[', '')
-                array_dim = array_dim.split(']')
-                var_num = 1
-                for dim in array_dim:
-                    dim = dim.strip()
-                    if len(dim) > 0:
-                        var_num *= int(dim)
-                if "int64" in var_type:
-                    step_size = 8
-                elif "int32" in var_type:
-                    step_size = 4
-                elif "int16" in var_type:
-                    step_size = 2
-                elif "int8" in var_type:
-                    step_size = 1
-                elif 'char' not in var_type and 'short' not in var_type and 'int' not in var_type and 'long' not in var_type:
-                    continue  # ignore complex structure/union
-                else:
-                    assert False, "var type: {} not implemented".format(var_type)
-
-                for i in range(var_num):
-                    f.write(hex(addr + i * step_size) + '\n')
-            elif '[' not in var_type:  # record pointer values, but ignore them during trace consistency checking
-                if 'char' not in var_type and 'short' not in var_type and 'int' not in var_type and 'long' not in var_type:
-                    continue  # ignore complex struct/union, which cannot be well recorded currently
-                f.write(hex(addr) + '\n')
-            elif 'const' in var_type:
-                continue
-            elif '*' in var_type and '[' in var_type:
-                continue  # pointer array -> too complex, ignore
-            else:
-                assert False, "var type: {} not implemented".format(var_type)
+        for addr, (name, wasm_addr) in lcs.PtrItem.clang_objs_dict.items():
+            f.write(hex(addr) + '\n')
         f.close()
 
 
