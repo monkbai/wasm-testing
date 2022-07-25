@@ -144,7 +144,7 @@ def get_name_and_addr(glob_obj: dict):
 
     else:  # single addr
         # step_size of single var may never be used, but just in case
-        if "int64" in obj_type or '*' in obj_type:
+        if "int64" in obj_type or '*' in obj_type or "long int" in obj_type:
             step_size = 8
         elif "int32" in obj_type or '"int"' in obj_type:
             step_size = 4
@@ -471,7 +471,7 @@ def trace_check_glob_correct(wasm_glob_trace_dict: dict, clang_glob_trace_dict: 
                     if glob["DW_AT_name"] == '("{}")'.format(glob_key):
                         break
                 # exists in wasm objs?
-                for obj in wasm_globs:
+                for obj in lcs.PtrItem.wasm_objs_dict.values():
                     if obj[0] == glob_name:
                         break
 
@@ -662,7 +662,11 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
 
 
 def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
-    # TODO: use nm -n for clang/gcc binary
+    # clean
+    elf_path = c_src_path[:c_src_path.rfind('.')] + '.out'
+    wasm_path = c_src_path[:c_src_path.rfind('.')] + '.wasm'
+    status, output = utils.cmd("rm {}".format(os.path.abspath(elf_path)))
+    status, output = utils.cmd("rm {}".format(os.path.abspath(elf_path)))
 
     print("\nTrace Consistency Checking for {}...".format(c_src_path))
     # profile, get dwarf information of global variables and function arguments

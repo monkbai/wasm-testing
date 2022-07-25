@@ -67,15 +67,15 @@ def main(tmp_c: str, interest_type='functionality', clang_opt_level='-O0', emcc_
         exit(-1)
 
 
-glob_corr_list = []
-func_corr_list = []
-glob_perf_list = ['g_48[3][7]', 'g_48[3][8]', 'g_48[3][5]', 'g_48[3][6]', 'g_48[3][3]', 'g_48[3][4]', 'g_48[3][1]', 'g_48[3][2]', 'g_48[2][8]', 'g_48[3][0]', 'g_48[2][6]', 'g_48[2][7]', 'g_48[2][4]', 'g_48[2][5]', 'g_48[2][2]', 'g_48[2][3]', 'g_48[2][0]', 'g_48[2][1]', 'g_48[1][7]', 'g_48[1][8]', 'g_48[1][5]', 'g_48[1][6]', 'g_48[1][3]', 'g_48[1][4]', 'g_48[1][1]', 'g_48[1][2]', 'g_48[0][8]', 'g_48[1][0]', 'g_48[0][6]', 'g_48[0][7]', 'g_48[0][4]', 'g_48[0][5]', 'g_48[0][2]', 'g_48[0][3]', 'g_48[0][0]', 'g_48[0][1]']
+glob_corr_list = ['crc32_context', 'g_61']
+func_corr_list = ['transparent_crc']
+glob_perf_list = []
 func_perf_list = []
 
 
 if __name__ == '__main__':
     # main('./inconsis_trace/bug_cases/test179.c')
-    main('./tmp.c', interest_type='optimization', clang_opt_level='-O3', emcc_opt_level='-O3')
+    main('./tmp.c', interest_type='functionality', clang_opt_level='-O0', emcc_opt_level='-O2')
     if len(sys.argv) == 2:
         main(sys.argv[1])
     elif len(sys.argv) == 3:

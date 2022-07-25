@@ -31,7 +31,7 @@ def get_elf_strs(elf_path: str):
                     offset = int(mat.group(1), 16)
                     str_value = mat.group(2)
                     str_value = str_value.replace('\\n', '\n')
-                    str_dict[str_value] = seg_base + offset
+                    str_dict['"{}"'.format(str_value)] = seg_base + offset
         except UnicodeDecodeError as err:
             pass
     return str_dict
@@ -62,7 +62,7 @@ def get_wasm_strs(wat_path: str):
                         str_value = whole_str[start_idx:]
 
                     addr = base_addr + start_idx
-                    str_dict[str_value] = addr
+                    str_dict['"{}"'.format(str_value)] = addr
 
                     idx = end_idx + 1
     return str_dict

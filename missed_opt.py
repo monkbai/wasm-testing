@@ -39,7 +39,7 @@ def main_test():
 
 
 def main():
-    file_idx = 7
+    file_idx = 48
     while file_idx < 1001:
         c_path = os.path.join('./missopt_cases/testcases', 'test{}.c'.format(file_idx))
         # get_one_csmith(c_path)

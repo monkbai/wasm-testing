@@ -44,6 +44,8 @@ def print_func_arg_size(func_objs: list, param_dict: dict, func_param_file: str)
             for param in param_list:
                 arg_type = param["DW_AT_type"]
                 arg_type = arg_type.replace('const ', '')
+                arg_type = arg_type.replace('unsigned ', '')  # we only care about the size
+                arg_type = arg_type.replace('signed ', '')
                 if mat := re.search(r'\(0x[\da-fA-F]+\s"(\w+)"\)', arg_type):
                     arg_type = mat.group(1)
                     if "int64" in arg_type or "long long" in arg_type:
