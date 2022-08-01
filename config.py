@@ -10,8 +10,8 @@ creduce_path = '/home/tester/Documents/creduce/build/creduce/creduce'
 clang_ir_cmd = "clang-12 -c -w -g -O0 -emit-llvm -S {} -o {}"
 clang_ir_cmd2 = "clang-12 -c -w -g -O0 -emit-llvm -S -I/home/tester/Documents/csmith/runtime {} -o {}"
 clang_dwarf_cmd2 = "clang-12 -w -g -O0 -I/home/tester/Documents/csmith/runtime {} -o {}"
-# clang_dwarf_opt_cmd = "clang-12 -w -g {} -I/home/tester/Documents/csmith/runtime {} -o {}"
-clang_dwarf_opt_cmd = "gcc -no-pie -w -g {} -I/home/tester/Documents/csmith/runtime {} -o {}"  # -no-pie is important
+clang_dwarf_opt_cmd = "clang-12 -w -g {} -I/home/tester/Documents/csmith/runtime {} -o {}"
+# clang_dwarf_opt_cmd = "gcc -no-pie -w -g {} -I/home/tester/Documents/csmith/runtime {} -o {}"  # -no-pie is important
 # clang_dwarf_opt_cmd = "gcc -no-pie -mno-sse -fcf-protection=none -w -g {} -I/home/tester/Documents/csmith/runtime {} -o {}"  # -no-pie is important
 # gcc version: 11.2.0
 

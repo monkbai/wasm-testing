@@ -354,7 +354,7 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
                     l = lines[idx]
                     assert l.startswith('V: ')
                     write_value_con = int(l[l.find(':') + 1:].strip(), 16)
-                    write_value = write_value_con << 64 + write_value
+                    write_value = (write_value_con << 64) + write_value
 
                     # 16 bytes values, exist in clang/gcc O3 binaries (xmm word)
                     # writes to consecutive elements in an array
@@ -601,6 +601,7 @@ def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: 
                 print('>Func trace inconsistency founded.')
                 print('\tfunc_name: {}, wasm_item_index: {}, item_type: {}, item_values: {}'.format(
                        func_name, i, func_item_trace[i].type, func_item_trace[i].values))
+                break  # de-duplicate
     return inconsistent_list
 
 
@@ -732,8 +733,9 @@ def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
 
 def main():
     # test
-    c_src_path = "./tmp.c"
-    trace_check(c_src_path)
+    c_src_path = './tmp.c'
+    obj_lists = trace_check(c_src_path, clang_opt_level='-O0', emcc_opt_level='-O2')
+    utils.obj_to_json(obj_lists, 'test319.consis.json')
 
 
 def test(debug_dir="./debug_cases"):
@@ -751,4 +753,4 @@ def test(debug_dir="./debug_cases"):
 
 if __name__ == '__main__':
     main()
-    test()
+    # test()

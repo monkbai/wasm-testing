@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import subprocess
 from threading import Timer
 # from subprocess import Popen, PIPE, getstatusoutput
@@ -138,3 +139,16 @@ def crash_checking(c_path: str, opt_level='-O0'):
     return True
 
 
+def obj_to_json(dict_obj, output_path: str):
+    j = json.dumps(dict_obj, sort_keys=True, indent=4)
+    with open(output_path, 'w') as f:
+        f.write(j)
+
+
+def json_to_obj(json_path: str):
+    if not os.path.exists(json_path):
+        return list()
+    with open(json_path, 'r') as f:
+        j_txt = f.read()
+        list_obj = json.loads(s=j_txt)
+        return list_obj

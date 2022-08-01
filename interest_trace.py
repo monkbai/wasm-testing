@@ -73,12 +73,18 @@ glob_perf_list = []
 func_perf_list = []
 
 
+def get_ground_truth(json_path: str):
+    global glob_corr_list, func_corr_list, glob_perf_list, func_perf_list
+    glob_corr_list, func_corr_list, glob_perf_list, func_perf_list = utils.json_to_obj(json_path)
+
+
 if __name__ == '__main__':
-    # main('./inconsis_trace/bug_cases/test179.c')
-    main('./tmp.c', interest_type='functionality', clang_opt_level='-O0', emcc_opt_level='-O2')
-    if len(sys.argv) == 2:
-        main(sys.argv[1])
-    elif len(sys.argv) == 3:
+    # get_ground_truth('test319.consis.json')
+    # main('./debug_cases/test319.c', interest_type='functionality', clang_opt_level='-O2', emcc_opt_level='-O2')
+    # main('./tmp.c', interest_type='functionality', clang_opt_level='-O0', emcc_opt_level='-O2')
+
+    if len(sys.argv) == 4:
+        get_ground_truth(sys.argv[3])
         if sys.argv[2].startswith('function'):
             main(sys.argv[1])
         elif sys.argv[2].startswith('optimization'):

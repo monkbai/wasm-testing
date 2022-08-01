@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-""" Deprecated """
-
 import os
 import stat
 
@@ -10,39 +8,49 @@ import config
 import trace_consistency
 
 
-def generate_test_sh():
+def generate_test_sh(c_file: str, gt_file: str):
     f_path = os.path.realpath(__file__)
     pwd = os.path.dirname(f_path)
-    sh_txt = "#!/bin/bash\npython3 {}/interest.py tmp.c functionality\n".format(pwd, pwd)
+    sh_txt = "#!/bin/bash\npython3 {}/interest_trace.py {} functionality {}\n".format(pwd, c_file, gt_file)
     with open('test.sh', 'w') as f:
         f.write(sh_txt)
     os.chmod('test.sh', 0o777)
 
 
-def generate_perf_test_sh():
+def generate_perf_test_sh(c_file: str, gt_file):
     f_path = os.path.realpath(__file__)
     pwd = os.path.dirname(f_path)
-    sh_txt = "#!/bin/bash\npython3 {}/interest.py tmp.c optimization\n".format(pwd, pwd)
+    sh_txt = "#!/bin/bash\npython3 {}/interest_trace.py {} optimization {}\n".format(pwd, c_file, gt_file)
     with open('test.sh', 'w') as f:
         f.write(sh_txt)
     os.chmod('test.sh', 0o777)
 
 
-def generate_ground_truth():
-    pass
+def generate_ground_truth(c_src_path: str, gt_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
+    c_src_path = './tmp.c'
+    obj_lists = trace_consistency.trace_check(c_src_path, clang_opt_level, emcc_opt_level)
+    utils.obj_to_json(obj_lists, gt_path)
 
 
 creduce_path = config.creduce_path
 
 
-def reduce_c(c_path: str, reduced_path: str):
+def reduce_c(c_path: str, reduced_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
+    # TODO
     reduced_path = os.path.abspath(reduced_path)
+    if os.path.exists(reduced_path):
+        print('"{}" already exists.'.format(reduced_path))
+        return
+
     reduced_wasm = reduced_path[:reduced_path.rfind('.c')] + '.wasm'
     reduced_js = reduced_path[:reduced_path.rfind('.c')] + '.js'
     reduced_out = reduced_path[:reduced_path.rfind('.c')] + '.out'
+    ground_truth_path = reduced_path[:reduced_path.rfind('.c')] + '.gt.json'
 
     c_path = os.path.abspath(c_path)
-    status, output = utils.cmd('cp {} {}'.format(c_path, './tmp.c'))
+    status, output = utils.cmd('cp {} {}'.format(c_path, reduced_path))
+
+    generate_ground_truth(reduced_path, ground_truth_path, clang_opt_level, emcc_opt_level)
 
     generate_test_sh()
     print('reducing {}...'.format(c_path))
