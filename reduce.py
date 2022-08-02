@@ -17,7 +17,7 @@ def generate_test_sh(test_sh_path: str, c_file: str, gt_file: str, check_type="f
     sh_txt = "#!/bin/bash\npython3 {}/interest_trace.py {} {} {}\n".format(pwd, c_file, check_type, gt_file)
     with open(test_sh_path, 'w') as f:
         f.write(sh_txt)
-    os.chmod('test.sh', 0o777)
+    os.chmod(test_sh_path, 0o777)
 
     return test_sh_path
 
