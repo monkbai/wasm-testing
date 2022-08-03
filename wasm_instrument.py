@@ -91,7 +91,8 @@ def get_data_offset(func_sec: str, with_skip=False):
 
 def add_data_str(func_sec: str):
     data_offset, appro_len = get_data_offset(func_sec, with_skip=True)
-    next_offset = data_offset + appro_len
+    # some variables are not explicitly defined in .wat, 4096 --> avoid collision
+    next_offset = data_offset + appro_len + 4096
     idx = func_sec.rfind(')')
 
     str_count = wasm_code.wasm_data_str.count('{}')
@@ -446,7 +447,10 @@ def instrument_func_call(wat_txt, func_objs: list, param_dict: dict):
 
 
 def instrument(wasm_path: str, glob_objs: list, func_objs: list, param_dict: dict, new_wasm_path: str, opt_level='-O2'):
-    global callee_names_list
+    global callee_names_list, instrument_id
+    instrument_id = 0
+    callee_names_list = []
+
     for obj in glob_objs:
         obj = obj[1]
         if obj["DW_AT_name"].strip('()').strip('"') == '__stdout_FILE':
