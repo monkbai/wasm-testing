@@ -7,11 +7,26 @@ __pycache__/
 *.so
 
 # WebAssembly outputs
-.wasm
-.wat
-.js
-.out
-.debug
+*.wasm
+*.wat
+*.js
+*.out
+*.debug
+*.trace
+*.funcs
+*.globs
+*.orig
+*.param
+*.retfuncs
+*.js
+*.ll
+*.out
+*.dwarf
+*.s
+*.sh
+*.tmp
+*.json
+
 
 .idea/
 

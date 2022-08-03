@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import os
 import stat
+import time
+from multiprocessing import Pool
 
 
 import utils
@@ -34,7 +36,7 @@ def reduce_c(c_path: str, reduced_path: str, check_type="functionality", clang_o
     # TODO: this function should be able to be parallel?
     reduced_path = os.path.abspath(reduced_path)
     if os.path.exists(reduced_path):
-        print('"{}" already exists.'.format(reduced_path))
+        # print('"{}" already exists.'.format(reduced_path))
         return
 
     reduced_wasm = reduced_path[:reduced_path.rfind('.c')] + '.wasm'
@@ -61,16 +63,27 @@ def reduce_c(c_path: str, reduced_path: str, check_type="functionality", clang_o
     utils.project_dir, base_dir = base_dir, utils.project_dir
 
 
-def reduce(error_dir='./errorcases'):
+def reduce(error_dir='./debug_cases'):
     files = os.listdir(error_dir)
     files.sort()
     for f in files:
         if f.endswith('.c') and '_re' not in f and not os.path.exists(f[:-2]+'_re.c'):
             c_path = os.path.join(error_dir, f)
             reduced_path = c_path[:-2] + '_re.c'
-            reduce_c(c_path, reduced_path)
+            reduce_c(c_path, reduced_path, check_type="functionality", clang_opt_level='-O0', emcc_opt_level='-O2')
+
+
+def worker(sleep_time: int):
+    time.sleep(sleep_time * 5)
+    try:
+        reduce()
+    except Exception as e:
+        pass
 
 
 if __name__ == '__main__':
-    reduce_c('./debug_cases/test336.c', './debug_cases/test336_re.c', check_type="functionality", clang_opt_level='-O0', emcc_opt_level='-O2')
-    reduce()
+    # reduce_c('./debug_cases/test336.c', './debug_cases/test336_re.c', check_type="functionality", clang_opt_level='-O0', emcc_opt_level='-O2')
+    # reduce()
+
+    with Pool(8) as p:
+        p.starmap(worker, [(i,) for i in range(8)])
