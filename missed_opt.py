@@ -39,7 +39,7 @@ def main_test():
 
 
 def main():
-    file_idx = 342
+    file_idx = 380
     while file_idx < 2000:
         c_path = os.path.join('./testcases', 'test{}.c'.format(file_idx))
         # get_one_csmith(c_path)
