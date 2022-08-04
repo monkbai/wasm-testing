@@ -45,8 +45,6 @@ def udf_checking(c_path: str):
     #     exit(-1)
     elif "more '%' conversions than data arguments" in output:
         exit(-1)
-    elif "tentative array" in output:
-        exit(-1)
 
 
 def main(tmp_c: str, interest_type='functionality', clang_opt_level='-O0', emcc_opt_level='-O2'):
@@ -56,6 +54,8 @@ def main(tmp_c: str, interest_type='functionality', clang_opt_level='-O0', emcc_
     #     if 'func_1' not in f.read():
     #         exit(-1)  # keep func_1
     udf_checking(c_path=tmp_c)
+    if not utils.compile_checking(c_path=tmp_c, opt_level=clang_opt_level):
+        exit(-1)
     if not utils.crash_checking(c_path=tmp_c, opt_level=clang_opt_level):
         exit(-1)
 

@@ -86,6 +86,25 @@ def clang_dwarf(c_src_path: str, opt_level='-O0'):
     return out_path, dwarf_txt_path
 
 
+def clang_dwarf_withoutput(c_src_path: str, opt_level='-O0'):
+    """ used in utils for compilation checking """
+    c_src_path = os.path.abspath(c_src_path)
+    dir_path = os.path.dirname(c_src_path)
+    assert c_src_path.endswith('.c')
+    out_path = c_src_path[:-2] + '.out'
+    dwarf_txt_path = out_path + '.dwarf'
+
+    tmp_dir = utils.project_dir
+    utils.project_dir = dir_path
+
+    status, output1 = utils.cmd(config.clang_dwarf_opt_cmd.format(opt_level, c_src_path, out_path))
+    status, output2 = utils.cmd(config.dwarfdump_cmd.format(out_path, dwarf_txt_path))
+
+    utils.project_dir = tmp_dir
+
+    return out_path, dwarf_txt_path, output1
+
+
 def obj_str_split(obj_str: str):
     prefix_idx = len(re.match(r"\s+",obj_str).group())
     tmp_lines = obj_str.split('\n')

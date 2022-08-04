@@ -39,7 +39,8 @@ def main_test():
 
 
 def main():
-    file_idx = 945
+    file_idx = 1121  # this one timeout --> undefined behaviour?
+    file_idx = 1122
     while file_idx < 2000:
         c_path = os.path.join('./testcases', 'test{}.c'.format(file_idx))
         # get_one_csmith(c_path)
