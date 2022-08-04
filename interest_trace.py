@@ -47,6 +47,15 @@ def udf_checking(c_path: str):
         exit(-1)
 
 
+def preserved_keywords(c_path: str, key_list: list):
+    with open(c_path, 'r') as f:
+        txt = f.read()
+        for k in key_list:
+            if k not in txt:
+                return False
+        return True
+
+
 def main(tmp_c: str, interest_type='functionality', clang_opt_level='-O0', emcc_opt_level='-O2'):
     tmp_c = os.path.abspath(tmp_c)
     # TODO: what if do not keep <func_1>
@@ -57,6 +66,8 @@ def main(tmp_c: str, interest_type='functionality', clang_opt_level='-O0', emcc_
     if not utils.compile_checking(c_path=tmp_c, opt_level=clang_opt_level):
         exit(-1)
     if not utils.crash_checking(c_path=tmp_c, opt_level=clang_opt_level):
+        exit(-1)
+    if not preserved_keywords(tmp_c, []):
         exit(-1)
 
     glob_correct_inconsistent_list, \
