@@ -9,6 +9,14 @@ import trace_consistency
 
 
 def list_compare(list1: list, list2: list):
+    # list1 should be the ground truth
+    if len(set(list1).intersection(list2)) != len(list1):
+        return False
+    return True
+
+
+def list_compare_strict(list1: list, list2: list):
+    # list1 should be the ground truth
     if len(list2) != len(list1):
         return False
     if len(set(list1).intersection(list2)) != len(list1):
