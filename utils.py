@@ -127,12 +127,12 @@ def udf_checking(c_path: str):
 
 
 def compile_checking(c_path: str, opt_level='-O0'):
-    global timeout_sec
-    timeout_tmp = timeout_sec
-    timeout_sec = 1
+
     elf_path, dwarf_path, compile_output = profile.clang_dwarf_withoutput(c_path, opt_level=opt_level)
 
     if "tentative array" in compile_output:
+        return False
+    elif "incompatible pointer to integer conversion" in compile_output:
         return False
     return True
 
