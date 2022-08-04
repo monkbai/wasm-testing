@@ -47,6 +47,8 @@ def get_wasm_strs(wat_path: str):
             if mat := re.match(r'\(data\s\$\.rodata\s\(i32\.const\s(\d+)\)\s"(.+)"\)', l):
                 base_addr = int(mat.group(1))
                 whole_str = mat.group(2)
+                if '\\00\\00\\00\\00' in whole_str:  # TODO: not very safe
+                    whole_str = whole_str[:whole_str.find('\\00\\00\\00\\00')]
                 whole_str = whole_str.replace('\\00', '\00')
                 whole_str = whole_str.replace('\\0a', '\n')
 
