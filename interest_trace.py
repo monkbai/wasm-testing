@@ -41,6 +41,8 @@ def main(tmp_c: str, interest_type='functionality', clang_opt_level='-O0', emcc_
     #     if 'func_1' not in f.read():
     #         exit(-1)  # keep func_1
     udf_checking(c_path=tmp_c)
+    if not utils.crash_checking(c_path=tmp_c, opt_level=clang_opt_level):
+        exit(-1)
 
     glob_correct_inconsistent_list, \
         func_correct_inconsistent_list, \

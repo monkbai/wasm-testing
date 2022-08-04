@@ -748,10 +748,12 @@ def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
 
 
 def main():
+    global debug_mode
     # test
-    c_src_path = './debug_cases/test319_re.c'
+    c_src_path = './debug_cases/test1453.c'
+    debug_mode = True
     obj_lists = trace_check(c_src_path, clang_opt_level='-O0', emcc_opt_level='-O2')
-    utils.obj_to_json(obj_lists, 'test319.consis.json')
+    utils.obj_to_json(obj_lists, 'test1453.consis.json')
 
 
 def test(debug_dir="./debug_cases"):

@@ -136,6 +136,8 @@ def crash_checking(c_path: str, opt_level='-O0'):
     timeout_sec = timeout_tmp
     if status != 0:
         return False
+    elif 'Warning: Not Safe!' in output1:
+        return False
     return True
 
 
