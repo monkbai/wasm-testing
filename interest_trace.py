@@ -24,6 +24,11 @@ def list_compare_strict(list1: list, list2: list):
     return True
 
 
+def update_ground_truth():
+    # TODO: should we update the ground truth each time?
+    pass
+
+
 def udf_checking(c_path: str):
     """ Checking for undefined behaviors
         1. Assigned value is garbage or undefined [clang-analyzer-core.uninitialized.Assign]
@@ -39,6 +44,8 @@ def udf_checking(c_path: str):
     # elif 'is undefined' in output:
     #     exit(-1)
     elif "more '%' conversions than data arguments" in output:
+        exit(-1)
+    elif "tentative array" in output:
         exit(-1)
 
 
