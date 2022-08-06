@@ -91,7 +91,8 @@ def main(tmp_c: str, interest_type='functionality', clang_opt_level='-O0', emcc_
             # extra check: if current case is interesting
             # and also the inconsistent_list subsumes ground truth (i.e., new var/func are detected during reducing)
             # then we update the ground truth lists
-
+            update_ground_truth(glob_correct_inconsistent_list, func_correct_inconsistent_list,
+                                glob_perf_inconsistent_list, func_perf_inconsistent_list)
             exit(0)  # exit with zero when the case is still interesting
         else:
             exit(-1)
