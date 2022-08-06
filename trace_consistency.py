@@ -723,7 +723,7 @@ def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
     # trace consistency check
     if len(wasm_globs) > 0:
         glob_correct_inconsistent_list = \
-            trace_check_glob_correct(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs, case2_check=True)
+            trace_check_glob_correct(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs, case2_check=False)
     else:
         glob_correct_inconsistent_list = []
     func_correct_inconsistent_list = \
@@ -750,10 +750,11 @@ def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
 def main():
     global debug_mode
     # test
-    c_src_path = './missopt_cases/bug_cases/test6_re_re.c'
+    # c_src_path = './missopt_cases/bug_cases/test6_re_re.c'
+    c_src_path = './debug_cases/test1495_re.c'
     debug_mode = True
-    obj_lists = trace_check(c_src_path, clang_opt_level='-O3', emcc_opt_level='-O3')
-    # utils.obj_to_json(obj_lists, 'test1453.consis.json')
+    obj_lists = trace_check(c_src_path, clang_opt_level='-O0', emcc_opt_level='-O2')
+    utils.obj_to_json(obj_lists, 'test1495_re.gt.json')
 
 
 def test(debug_dir="./debug_cases"):

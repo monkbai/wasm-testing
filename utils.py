@@ -132,6 +132,8 @@ def compile_checking(c_path: str, opt_level='-O0'):
 
     if "tentative array" in compile_output:
         return False
+    elif "past the end of the array" in compile_output:
+        return False
     elif "incompatible pointer to integer conversion" in compile_output:
         return False
     return True
