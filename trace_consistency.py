@@ -459,7 +459,7 @@ def trace_check_glob_correct(wasm_glob_trace_dict: dict, clang_glob_trace_dict: 
 
         if glob_trace[-1] != clang_trace[-1] and not clang_glob_trace_dict[glob_name][-1][1].startswith("OPT\n"):
             # TODO: re-consider the compiler optimization that may only update part of the var (e.g., OPT mark)
-            inconsistent_list.append(glob_name)
+            inconsistent_list.append("{}:{}".format(glob_name, glob_trace[-1]))
             if debug_mode:
                 print('>Glob trace inconsistency founded.')
                 print('\tglob_name: {}, wasm_last_write: {}, clang_last_write: {}'.format(glob_name, glob_trace[-1], clang_trace[-1]))
@@ -546,7 +546,12 @@ def trace_check_glob_perf(wasm_glob_trace_dict: dict, clang_glob_trace_dict: dic
 
         lcs_trace, lcs_trace2 = lcs.lcs(clang_trace, glob_trace)
         if len(glob_trace) != len(lcs_trace):
-            inconsistent_list.append(glob_name)
+            # find the first inconsistent index of glob_trace element
+            # the element value is used for better reducing
+            for idx in range(len(glob_trace)):
+                if idx not in lcs_trace:
+                    break
+            inconsistent_list.append("{}:{}".format(glob_name, glob_trace[idx]))
             if debug_mode:
                 if glob_trace[-1] == clang_trace[-1]:
                     print('>Glob trace performance inconsistency founded.')
@@ -609,7 +614,7 @@ def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: 
                     clang_idx = j + 1
                     break
             if not match_flag:
-                inconsistent_list.append(func_name)
+                inconsistent_list.append("{}:{}".format(func_name, func_item_trace[i].values))
                 if debug_mode:
                     print('>Func trace inconsistency founded.')
                     print('\tfunc_name: {}, wasm_item_index: {}, item_type: {}, item_values: {}'.format(
@@ -666,7 +671,12 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
 
         lcs_item_trace, lcs_item_trace2 = lcs.lcs(clang_item_trace, func_item_trace)
         if len(lcs_item_trace) != len(func_item_trace):
-            inconsistent_list.append(func_name)
+            # find the first inconsistent index of glob_trace element
+            # the element value is used for better reducing
+            for idx in range(len(func_item_trace)):
+                if idx not in lcs_item_trace:
+                    break
+            inconsistent_list.append("{}:{}".format(func_name, func_item_trace[idx].values))
             if debug_mode:
                 print('>Func trace inconsistency founded.')
                 print('\tfunc_name: {},'.format(func_name), end=' ')
@@ -751,7 +761,7 @@ def main():
     global debug_mode
     # test
     # c_src_path = './missopt_cases/bug_cases/test6_re_re.c'
-    c_src_path = './debug_cases/test1495_re.c'
+    c_src_path = './debug_cases/test1495.c'
     debug_mode = True
     obj_lists = trace_check(c_src_path, clang_opt_level='-O0', emcc_opt_level='-O2')
     utils.obj_to_json(obj_lists, 'test1495_re.gt.json')
