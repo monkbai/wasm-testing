@@ -24,8 +24,16 @@ def list_compare_strict(list1: list, list2: list):
     return True
 
 
-def update_ground_truth():
+def update_ground_truth(gc_list: list, fc_list: list, go_list: list, fo_list: list):
     # TODO: should we update the ground truth each time?
+    # Try and see what happen
+    glob_corr_list = ['crc32_context', 'g_61']
+    func_corr_list = ['transparent_crc']
+    glob_perf_list = []
+    func_perf_list = []
+    if len(gc_list) > len(glob_corr_list) or len(fc_list) > len(func_corr_list) or \
+            len(go_list) > len(glob_perf_list) or len(fo_list) > len(func_perf_list):
+        utils.obj_to_json([gc_list, fc_list, go_list, fo_list], gt_json_path)
     pass
 
 
@@ -80,7 +88,11 @@ def main(tmp_c: str, interest_type='functionality', clang_opt_level='-O0', emcc_
             if not list_compare(glob_corr_list, glob_correct_inconsistent_list) or \
                     not list_compare(func_corr_list, func_correct_inconsistent_list):
                 exit(-1)
-            exit(0)
+            # extra check: if current case is interesting
+            # and also the inconsistent_list subsumes ground truth (i.e., new var/func are detected during reducing)
+            # then we update the ground truth lists
+
+            exit(0)  # exit with zero when the case is still interesting
         else:
             exit(-1)
     elif interest_type.startswith('optimization'):
@@ -99,6 +111,7 @@ glob_corr_list = ['crc32_context', 'g_61']
 func_corr_list = ['transparent_crc']
 glob_perf_list = []
 func_perf_list = []
+gt_json_path = ""
 
 
 def get_ground_truth(json_path: str):
@@ -112,6 +125,7 @@ if __name__ == '__main__':
     # main('./tmp.c', interest_type='functionality', clang_opt_level='-O0', emcc_opt_level='-O2')
 
     if len(sys.argv) == 4:
+        gt_json_path = sys.argv[3]
         get_ground_truth(sys.argv[3])
         if sys.argv[2].startswith('function'):
             main(sys.argv[1])

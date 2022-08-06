@@ -73,6 +73,16 @@ def reduce(error_dir='./debug_cases'):
             reduce_c(c_path, reduced_path, check_type="functionality", clang_opt_level='-O0', emcc_opt_level='-O2')
 
 
+def reduce_opt(error_dir='./missopt_cases/bug_cases/'):
+    files = os.listdir(error_dir)
+    files.sort()
+    for f in files:
+        if f.endswith('.c') and '_re' not in f and not os.path.exists(f[:-2]+'_re.c'):
+            c_path = os.path.join(error_dir, f)
+            reduced_path = c_path[:-2] + '_re.c'
+            reduce_c(c_path, reduced_path, check_type="optimization", clang_opt_level='-O3', emcc_opt_level='-O3')
+
+
 def worker(sleep_time: int):
     time.sleep(sleep_time * 5)
     try:
@@ -84,6 +94,8 @@ def worker(sleep_time: int):
 if __name__ == '__main__':
     # reduce_c('./debug_cases/test336.c', './debug_cases/test336_re.c', check_type="functionality", clang_opt_level='-O0', emcc_opt_level='-O2')
     # reduce()
+    reduce_opt()
+    exit(0)
 
     with Pool(8) as p:
         p.starmap(worker, [(i,) for i in range(8)])
