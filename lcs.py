@@ -74,6 +74,16 @@ class FuncItem:
                     pass  # both point to unknown objs
         return True
 
+    def values_str(self):
+        val_str = ""
+        for i in range(len(self.values)):
+            if self.pointer_flags[i]:  # ptr value
+                val_str += 'ptr' + ','
+            else:
+                val_str += str(self.values[i]) + ','
+        val_str = val_str.strip(',')
+        return '[{}]'.format(val_str)
+
 
 def lcs(list1: list, list2: list):
     """ Longest Common Sequence """

@@ -614,7 +614,7 @@ def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: 
                     clang_idx = j + 1
                     break
             if not match_flag:
-                inconsistent_list.append("{}:{}".format(func_name, func_item_trace[i].values))
+                inconsistent_list.append("{}:{}".format(func_name, func_item_trace[i].values_str()))
                 if debug_mode:
                     print('>Func trace inconsistency founded.')
                     print('\tfunc_name: {}, wasm_item_index: {}, item_type: {}, item_values: {}'.format(
@@ -676,7 +676,7 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
             for idx in range(len(func_item_trace)):
                 if idx not in lcs_item_trace:
                     break
-            inconsistent_list.append("{}:{}".format(func_name, func_item_trace[idx].values))
+            inconsistent_list.append("{}:{}".format(func_name, func_item_trace[idx].values_str()))
             if debug_mode:
                 print('>Func trace inconsistency founded.')
                 print('\tfunc_name: {},'.format(func_name), end=' ')
