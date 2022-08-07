@@ -10,30 +10,27 @@ import trace_consistency
 
 def get_one_csmith(c_path: str):
     utils.csmith_generate(c_path)  # with size limit
-    while not utils.udf_checking(c_path) or not utils.crash_checking(c_path, opt_level='-O0'):  # undefined behaviour check
+    while not utils.crash_checking(c_path, opt_level='-O0'):  # undefined behaviour check is overly strict
         utils.csmith_generate(c_path)
+    # while not utils.udf_checking(c_path) or not utils.crash_checking(c_path, opt_level='-O0'):  # undefined behaviour check
+    #     utils.csmith_generate(c_path)
 
 
 def main_test():
-    file_idx = 27
+    file_idx = 291
     while True:
-        c_path = os.path.join('./missopt_cases', 'test{}.c'.format(file_idx))
-        get_one_csmith(c_path)
+        c_path = os.path.join('./find_fo', 'test{}.c'.format(file_idx))
+        #  get_one_csmith(c_path)
         glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(c_path, clang_opt_level='-O3', emcc_opt_level='-O3')
-        output1, status = utils.run_single_prog("./missopt_cases/test{}.out".format(file_idx))
-        output2, status = utils.run_single_prog("node ./missopt_cases/test{}.js".format(file_idx))
-        if len(glob_correct) == 0 and len(func_correct) == 0:
+        # output1, status = utils.run_single_prog("./missopt_cases/test{}.out".format(file_idx))
+        # output2, status = utils.run_single_prog("node ./missopt_cases/test{}.js".format(file_idx))
+        if len(glob_correct) == 0:
             if len(glob_perf) != 0 or len(func_perf) != 0:
-                break
+                if len(func_perf) != 0:
+                    print(file_idx)
+                    break
 
-            if output1.strip() != output2.strip():
-                status, output = utils.cmd(
-                    "cp ./missopt_cases/test{}.c ./tmp2_cases/test{}.c".format(file_idx, file_idx))
-        else:
-            if output1.strip() != output2.strip():
-                status, output = utils.cmd("cp ./missopt_cases/test{}.c ./tmp_cases/test{}.c".format(file_idx, file_idx))
-
-        status, output = utils.cmd("rm ./missopt_cases/test{}*".format(file_idx))
+        status, output = utils.cmd("rm ./find_fo/test{}*".format(file_idx))
         file_idx += 1
     print(file_idx)
 
@@ -64,5 +61,33 @@ def main():
     print(file_idx)
 
 
+def find_fo_case():
+    file_idx = 0
+    case_ids = []
+    while file_idx < 2000:
+        c_path = os.path.join('./testcases/under_opt_gcc', 'test{}.c'.format(file_idx))
+        if not os.path.exists(c_path):
+            file_idx += 1
+            continue
+        glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(c_path, clang_opt_level='-O3', emcc_opt_level='-O3')
+        if len(glob_correct) == 0 and len(func_correct) == 0:
+            if len(glob_perf) != 0 or len(func_perf) != 0:
+                if len(func_perf) != 0:
+                    case_ids.append(file_idx)
+                    print(file_idx)
+
+        status, output = utils.cmd("rm ./testcases/under_opt_gcc/test{}.c.*".format(file_idx))
+        status, output = utils.cmd("rm ./testcases/under_opt_gcc/test{}.out".format(file_idx))
+        status, output = utils.cmd("rm ./testcases/under_opt_gcc/*.js".format(file_idx))
+        status, output = utils.cmd("rm ./testcases/under_opt_gcc/*.wasm".format(file_idx))
+        status, output = utils.cmd("rm ./testcases/under_opt_gcc/*.wat".format(file_idx))
+        status, output = utils.cmd("rm ./testcases/under_opt_gcc/*.dwarf".format(file_idx))
+        status, output = utils.cmd("rm ./testcases/under_opt_gcc/*.trace".format(file_idx))
+        file_idx += 1
+    print(case_ids)
+
+
 if __name__ == '__main__':
+    main_test()
+    exit(0)
     main()

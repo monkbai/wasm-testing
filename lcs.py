@@ -55,6 +55,8 @@ class FuncItem:
     def __eq__(self, other):
         if self.type != other.type:
             return False
+        if len(self.pointer_flags) != len(other.pointer_flags):  # possible, due to optimization? or struct/union as parameter?
+            return False
         for i in range(len(self.pointer_flags)):
             assert self.pointer_flags[i] == other.pointer_flags[i]
 

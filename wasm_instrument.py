@@ -326,6 +326,20 @@ def _instrument_func_call(func_txt: str, func_name: str, func_name2offset: dict,
             l = prefix_space + "i32.const {}\n".format(
                 func_name2offset[func_name]) + prefix_space + "call $myprint_call\n"
 
+            # use the wasm function definition, instead of dwarf info
+            if mat := re.search(r"\(param ([if0-9\s]+)\)", lines[0]):
+                params = mat.group(1).split(' ')
+                for param_idx in range(len(params)):
+                    l += prefix_space + 'local.get {}\n'.format(param_idx)
+                    p = params[param_idx]
+                    if p == 'i64':
+                        l += prefix_space + 'call $myprint_i64p\n'
+                    elif p == 'i32':
+                        l += prefix_space + 'call $myprint_i32p\n'
+                    else:
+                        assert False, "param type '{}' not implemented".format(p)
+
+            '''
             # print function parameters
             if func_obj["DW_AT_name"] in param_dict.keys():
                 params = param_dict[func_obj["DW_AT_name"]]
@@ -343,6 +357,7 @@ def _instrument_func_call(func_txt: str, func_name: str, func_name2offset: dict,
                     else:
                         assert False, "param type not implemented"
                     param_idx += 1
+            '''
 
             # original first line
             l += lines[idx]

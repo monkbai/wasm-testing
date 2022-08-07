@@ -386,8 +386,8 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
                             write_value = write_value >> 32
                             write_size -= step_size
                             write_addr += 4
-                        else:
-                            assert False
+                        else:  # complex struct/union, ignore this write
+                            break  # assert False
                     aux_info = ""
                 else:
                     glob_name = ''  # find corresponding global name
@@ -551,7 +551,10 @@ def trace_check_glob_perf(wasm_glob_trace_dict: dict, clang_glob_trace_dict: dic
             for idx in range(len(glob_trace)):
                 if idx not in lcs_trace:
                     break
-            inconsistent_list.append("{}:{}".format(glob_name, glob_trace[idx]))
+            if '*' in obj["DW_AT_type"]:
+                inconsistent_list.append("{}:{}".format(glob_name, 'ptr'))
+            else:
+                inconsistent_list.append("{}:{}".format(glob_name, glob_trace[idx]))
             if debug_mode:
                 if glob_trace[-1] == clang_trace[-1]:
                     print('>Glob trace performance inconsistency founded.')
@@ -761,9 +764,9 @@ def main():
     global debug_mode
     # test
     # c_src_path = './missopt_cases/bug_cases/test6_re_re.c'
-    c_src_path = './debug_cases/test1495.c'
+    c_src_path = './testcases/under_opt_gcc/test1976.c'
     debug_mode = True
-    obj_lists = trace_check(c_src_path, clang_opt_level='-O0', emcc_opt_level='-O2')
+    obj_lists = trace_check(c_src_path, clang_opt_level='-O3', emcc_opt_level='-O3')
     utils.obj_to_json(obj_lists, 'test1495_re.gt.json')
 
 
