@@ -170,6 +170,28 @@ def traverse_dwarf(dwarf_path: str, filter='DW_OP_addr'):
     return glob_objs, var_names_list
 
 
+def replace_abstract_origin(dwarf_obj: str):
+    """
+    DW_AT_abstract_origin:
+      Inline instances of inline subprograms
+      Out-of-line instances of inline subprograms
+      https://dwarfstd.org/doc/DWARF4.pdf
+    :param dwarf_obj:
+    :return:
+    """
+    # seems we should handle this case as well
+    if mat := re.search(r'DW_AT_abstract_origin\s\((\w+) "(\w+)"\)', dwarf_obj):
+        # transform it to DW_AT_name, so the traverse function can hanlde this as well
+        obj_name = mat.group(2)
+        name_str = 'DW_AT_name	("{}")'.format(obj_name)
+        dwarf_obj = dwarf_obj.replace(mat.group(), name_str)
+
+    if "DW_TAG_inlined_subroutine" in dwarf_obj:
+        dwarf_obj = dwarf_obj.replace("DW_TAG_inlined_subroutine", "DW_TAG_subprogram")
+
+    return dwarf_obj
+
+
 def traverse_dwarf_subprogs(dwarf_path: str):
     func_objs = []
     param_dict = dict()
@@ -180,6 +202,8 @@ def traverse_dwarf_subprogs(dwarf_path: str):
         dwarf_txt = f.read()
         dwarf_objs = dwarf_txt.split('\n\n')
         for obj in dwarf_objs:
+            obj = replace_abstract_origin(obj)  # only part of the function calls are inlined
+
             if not obj.startswith('0x') or "DW_AT_name" not in obj:
                 continue
             if "DW_TAG_subprogram" not in obj and "DW_TAG_formal_parameter" not in obj:
@@ -191,6 +215,10 @@ def traverse_dwarf_subprogs(dwarf_path: str):
                 func_names_list.append(obj_dict["DW_AT_name"])
                 current_func = obj_dict
             elif obj_type == "DW_TAG_formal_parameter":
+
+                if "DW_AT_type" not in obj:  # or "DW_AT_low_pc" not in current_func:
+                    continue  # skip parameter in inlined function
+
                 if current_func["DW_AT_name"] in param_dict.keys():
                     param_dict[current_func["DW_AT_name"]].append(obj_dict)
                 else:
