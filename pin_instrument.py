@@ -95,8 +95,9 @@ def instrument(c_src_path: str, glob_objs: list, func_objs: list, param_dict: di
         for obj in func_objs:
             obj = obj[1]
             if "DW_AT_type" in obj and "DW_AT_low_pc" in obj:
-                addr = int(obj["DW_AT_low_pc"].strip('()'), 16)
-                f.write(hex(addr) + '\n')
+                low_addr = int(obj["DW_AT_low_pc"].strip('()'), 16)
+                high_addr = int(obj["DW_AT_high_pc"].strip('()'), 16)
+                f.write("{}:{}".format(hex(low_addr), hex(high_addr)) + '\n')
         f.close()
 
     # Preparation 4: print function argument types to file

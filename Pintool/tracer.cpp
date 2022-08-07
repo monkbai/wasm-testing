@@ -3,21 +3,22 @@
 #include <iostream>
 #include <fstream>
 #include <list>
+#include <vector>
 #include "pin.H"
 
 static std::unordered_map<ADDRINT, std::string> str_of_ins_at;
 
 FILE * trace;
 
-int after_call_flag = 0; // is current instruction after a call
-ADDRINT call_ip = 0;  // ip of the previous call instruction
-std::string call_inst_str = "";  // the instruction string of the previous call instruction
-ADDRINT callee_addr = 0; // callee addr of previous call instruction
+//int after_call_flag = 0; // is current instruction after a call
+//ADDRINT call_ip = 0;  // ip of the previous call instruction
+//std::string call_inst_str = "";  // the instruction string of the previous call instruction
+//ADDRINT callee_addr = 0; // callee addr of previous call instruction
 
 // just want hash table
 static std::unordered_map<uint64_t, uint64_t> global_addr;
 static std::unordered_map<uint64_t, uint64_t> func_addr;
-static std::unordered_map<uint64_t, uint64_t> ret_func_addr;
+static std::unordered_map<uint64_t, std::vector<uint64_t>> ret_func_addr;
 
 static std::unordered_map<uint64_t, std::list<uint32_t>> func2param; // func_addr -> [size_of_arg1, size_of_arg2, ...]
 /* ===================================================================== */
@@ -42,10 +43,11 @@ KNOB<std::string>   KnobParamFile(KNOB_MODE_WRITEONCE,  "pintool",
 // Utilities
 /* ===================================================================== */
 
+/*
 VOID RecordInst(VOID * ip)
 {
     std::string ins_str = str_of_ins_at[(ADDRINT)ip];
-    fprintf(trace,"%p: %s\n", ip, ins_str.c_str());  // for debug, provide more informative trace for bug locating
+    fprintf(trace,"%p: %s: record_inst\n", ip, ins_str.c_str());  // for debug, provide more informative trace for bug locating
     // fprintf(trace,">%p\n", ip);
 
     //std::string ins_str = str_of_ins_at[(ADDRINT)ip];
@@ -53,8 +55,10 @@ VOID RecordInst(VOID * ip)
     //fprintf(trace,"N:\t%p:\t%d\n", (void *)0xDEADBEEF, 7); // not real memory op
     //fprintf(trace,"N:\n");
 }
+*/
 
 // Print a memory read record
+/*
 VOID RecordMemRead(VOID * ip, VOID * mem_addr, USIZE mem_size)
 {
     fprintf(trace,"%p\n", ip);
@@ -63,6 +67,7 @@ VOID RecordMemRead(VOID * ip, VOID * mem_addr, USIZE mem_size)
     //fprintf(trace,"R:\t%p:\t%lu\n", mem_addr, mem_size);
     //fprintf(trace,"%p: R %p\n", ip, addr);
 }
+*/
 
 // Print a memory write record
 VOID RecordMemWrite(VOID * ip, VOID * mem_addr, USIZE mem_size)
@@ -99,10 +104,11 @@ VOID RecordMemWrite(VOID * ip, VOID * mem_addr, USIZE mem_size)
     }
 }
 
-VOID AfterCall(VOID * ip, ADDRINT rax){
+VOID AfterCall(VOID * ip, ADDRINT rax, ADDRINT callee_addr){
+    std::string ins_str = str_of_ins_at[(ADDRINT)ip];
     // If the return value is a pointer: treat it as int64 and print the pointer value
     if (ret_func_addr.find(callee_addr) != ret_func_addr.end()){  // only print return value of the target functions
-        fprintf(trace,"%p: %s\n", (VOID *)call_ip, call_inst_str.c_str());  // for debug, provide more informative trace for bug locating
+        fprintf(trace,"%p: %s: after_call\n", ip, ins_str.c_str());  // for debug, provide more informative trace for bug locating
         fprintf(trace,">%p R: %p\n", (VOID *)callee_addr, (void *)rax);
     }
 }
@@ -193,32 +199,24 @@ VOID Instruction(INS ins, VOID *v)
     }
 
     // Step 3:
-    // instrument the succeeded instruction after call
+    // instrument the `ret` instructions in the target functions
     // retrieve the return value (RAX)
-    if (after_call_flag != 0){
-        INS_InsertPredicatedCall(
-        ins, IPOINT_BEFORE, (AFUNPTR)AfterCall,
-        IARG_INST_PTR,
-        IARG_REG_VALUE, LEVEL_BASE::REG_RAX,
-        IARG_END);
-    }
-
-    if (INS_IsCall(ins) && INS_IsDirectControlFlow(ins)){
-        callee_addr = INS_DirectControlFlowTargetAddress(ins);
-        after_call_flag = 1;
-        call_ip = INS_Address(ins);
-        call_inst_str = str_of_ins_at[INS_Address(ins)];
-        if (func_addr.find(callee_addr) != func_addr.end() && func2param.find(callee_addr) != func2param.end()){
-            // the callee would be instrumented with RecordArgs
-            // record the addr and 'call' instruction in advance
-            INS_InsertPredicatedCall(
-                ins, IPOINT_BEFORE, (AFUNPTR)RecordInst,
+    if (INS_IsRet(ins)){
+        // check all function ranges in ret_func_addr
+        for (auto i = ret_func_addr.begin(); i != ret_func_addr.end(); i++){
+            uint64_t low_addr = i->second[0];
+            uint64_t high_addr = i->second[1];
+            if (high_addr >= ins_addr && ins_addr > low_addr){
+                INS_InsertPredicatedCall(
+                ins, IPOINT_BEFORE, (AFUNPTR)AfterCall,
                 IARG_INST_PTR,
+                IARG_REG_VALUE, LEVEL_BASE::REG_RAX,
+                IARG_ADDRINT, low_addr,
                 IARG_END);
+
+                break;
+            }
         }
-    }
-    else{
-        after_call_flag = 0;
     }
 }
 
@@ -268,9 +266,13 @@ int ReadRetFuncAddr(){
     FILE *fp = fopen(funcAddrFile.c_str(),"r");
 
     while(!feof(fp)){
-        uint64_t current_addr;
-        fscanf(fp, "%lx\n", &current_addr);
-        ret_func_addr[current_addr] = current_addr;
+        uint64_t low_addr;
+        uint64_t high_addr;
+        std::vector<uint64_t> addrs;
+        fscanf(fp, "%lx:%lx\n", &low_addr, &high_addr);
+        addrs.push_back(low_addr);
+        addrs.push_back(high_addr);
+        ret_func_addr[low_addr] = addrs;
     }
     return 0;
 }

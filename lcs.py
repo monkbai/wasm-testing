@@ -46,7 +46,7 @@ class FuncItem:
         FuncItem.clang_objs_dict = clang_objs_dict
 
     def __init__(self, func_name: str, item_type='P', item_values=[], pointer_flags=[]):
-        assert item_type == 'R' or len(item_values) == len(pointer_flags)
+        # assert item_type == 'R' or len(item_values) == len(pointer_flags) # it is possible for WASM
         self.func_name = func_name
         self.type = item_type
         self.values = item_values
@@ -55,7 +55,7 @@ class FuncItem:
     def __eq__(self, other):
         if self.type != other.type:
             return False
-        if len(self.pointer_flags) != len(other.pointer_flags):  # possible, due to optimization? or struct/union as parameter?
+        if len(self.values) != len(other.values):  # more parameters than defined in dwarf is possible for WASM, due to optimization?
             return False
         for i in range(len(self.pointer_flags)):
             assert self.pointer_flags[i] == other.pointer_flags[i]
@@ -77,14 +77,21 @@ class FuncItem:
         return True
 
     def values_str(self):
-        val_str = ""
-        for i in range(len(self.values)):
-            if self.pointer_flags[i]:  # ptr value
-                val_str += 'ptr' + ','
-            else:
-                val_str += str(self.values[i]) + ','
-        val_str = val_str.strip(',')
-        return '[{}]'.format(val_str)
+        if len(self.values) == len(self.pointer_flags):
+            val_str = ""
+            for i in range(len(self.values)):
+                if self.pointer_flags[i]:  # ptr value
+                    val_str += 'ptr' + ','
+                else:
+                    val_str += str(self.values[i]) + ','
+            val_str = val_str.strip(',')
+            return '[{}]'.format(val_str)
+        else:
+            val_str = ""
+            for i in range(len(self.values)):
+                val_str += 'unknown' + ','
+            val_str = val_str.strip(',')
+            return '[{}]'.format(val_str)
 
 
 def lcs(list1: list, list2: list):

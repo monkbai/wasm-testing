@@ -197,7 +197,7 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
                 func_key = '("{}")'.format(func_name)
                 param_list = wasm_param_dict[func_key] if func_key in wasm_param_dict.keys() else []
                 arg_list = []
-                for param in param_list:
+                while (idx+1) < len(lines) and lines[idx+1].startswith('P:'):  # for param in param_list:  # what if actual #parameters > #parameters defined in dwarf info
                     idx += 1
                     l = lines[idx]
                     assert l.startswith('P:')
@@ -648,25 +648,26 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
                 else:
                     pointer_flags.append(False)
 
+        func_item_trace = []
+        for item in func_trace:
+            # item[2] -> auxiliary information
+            func_item_trace.append(
+                lcs.FuncItem(func_name=func_name, item_type=item[0], item_values=item[1], pointer_flags=pointer_flags))
+        # what if this function
         if func_name not in clang_func_trace_dict:
             # TODO: is missing inline opportunity a problem?
-            # Seems not
+            # Seems not?
             # https://dl.acm.org/doi/10.1145/3503222.3507744
 
-            # print('>Func trace inconsistency founded.')
-            #  print('{} could be optimized or inlined.'.format(func_name))
-            # inconsistent_list.append(func_name)
+            print('>Func trace inconsistency founded.')
+            print('{} could be optimized or inlined.'.format(func_name))
+            inconsistent_list.append("{}:{}".format(func_name, func_item_trace[0].values_str()))
             continue
 
         clang_trace = clang_func_trace_dict[func_name]
 
-        # TODO: if we want to check missed opt opportunity we need to assume it is possible that len(clang_trace) != len(func_trace), i.e. Clang may have some advanced optimizations
+        # TODO: if we want to check missed opt opportunity we need to assume it is possible that len(clang_trace) != len(func_trace), i.e. Clang/gcc may have some more advanced optimizations
         # assert len(clang_trace) == len(func_trace), "error: inconsistent length of function call.\nIs this possible?"
-        func_item_trace = []
-        for item in func_trace:
-            # item[2] -> auxiliary information
-            func_item_trace.append(lcs.FuncItem(func_name=func_name, item_type=item[0], item_values=item[1], pointer_flags=pointer_flags))
-
         clang_item_trace = []
         for item in clang_trace:
             # item[2] -> auxiliary information
