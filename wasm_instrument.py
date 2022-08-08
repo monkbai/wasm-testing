@@ -221,92 +221,86 @@ def _instrument_func_line(func_txt: str):
     idx = 0
     while idx < len(lines):
         l = lines[idx].strip()
+        end_bracket = False
+        if l.endswith(')'):
+            end_bracket = True
+            l = l.strip(')')
         prefix_space = ' ' * lines[idx].find(l)
 
         if l == 'i32.store':
             l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
             l += prefix_space + "call $instrument_i32store  ;; i32.store"
-            new_func_txt += l + '\n'
         elif l == 'i32.store16':
             l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
             l += prefix_space + "call $instrument_i32store16  ;; i32.store16"
-            new_func_txt += l + '\n'
         elif l == 'i32.store8':
             l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
             l += prefix_space + "call $instrument_i32store8  ;; i32.store8"
-            new_func_txt += l + '\n'
 
         elif l == 'i64.store':
             l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
             l += prefix_space + "call $instrument_i64store  ;; i64.store"
-            new_func_txt += l + '\n'
         elif mat := re.match(r'i64\.store align=(\d+)', l):  # the same instrumentation as i64.store
             # the alignment will be handled in generalize_wasm_trace()
             align_num = int(mat.group(1))
             l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
             l += prefix_space + "call $instrument_i64store  ;; i64.store"
-            new_func_txt += l + '\n'
         elif l == 'i64.store32':
             l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
             l += prefix_space + "call $instrument_i64store32  ;; i64.store32"
-            new_func_txt += l + '\n'
         elif l == 'i64.store16':
             l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
             l += prefix_space + "call $instrument_i64store16  ;; i64.store16"
-            new_func_txt += l + '\n'
         elif l == 'i64.store8':
             l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
             l += prefix_space + "call $instrument_i64store8  ;; i64.store8"
-            new_func_txt += l + '\n'
 
         elif mat := re.match(r'i32\.store offset=(\d+)', l):
             addr_offset = int(mat.group(1))
             l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
             l += prefix_space + "i32.const {}\n".format(addr_offset) + prefix_space + "call $instrument_i32store_off  ;; " + lines[idx].strip()
-            new_func_txt += l + '\n'
         elif mat := re.match(r'i32\.store16 offset=(\d+)', l):
             addr_offset = int(mat.group(1))
             l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
             l += prefix_space + "i32.const {}\n".format(addr_offset) + prefix_space + "call $instrument_i32store16_off  ;; " + lines[idx].strip()
-            new_func_txt += l + '\n'
         elif mat := re.match(r'i32\.store8 offset=(\d+)', l):
             addr_offset = int(mat.group(1))
             l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
             l += prefix_space + "i32.const {}\n".format(addr_offset) + prefix_space + "call $instrument_i32store8_off  ;; " + lines[idx].strip()
-            new_func_txt += l + '\n'
 
         elif mat := re.match(r'i64\.store offset=(\d+)', l):
             addr_offset = int(mat.group(1))
             l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
             l += prefix_space + "i32.const {}\n".format(addr_offset) + prefix_space + "call $instrument_i64store_off  ;; " + lines[idx].strip()
-            new_func_txt += l + '\n'
         elif mat := re.match(r'i64\.store32 offset=(\d+)', l):
             addr_offset = int(mat.group(1))
             l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
             l += prefix_space + "i32.const {}\n".format(addr_offset) + prefix_space + "call $instrument_i64store32_off  ;; " + lines[idx].strip()
-            new_func_txt += l + '\n'
         elif mat := re.match(r'i64\.store16 offset=(\d+)', l):
             addr_offset = int(mat.group(1))
             l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
             l += prefix_space + "i32.const {}\n".format(addr_offset) + prefix_space + "call $instrument_i64store16_off  ;; " + lines[idx].strip()
-            new_func_txt += l + '\n'
         elif mat := re.match(r'i64\.store8 offset=(\d+)', l):
             addr_offset = int(mat.group(1))
             l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
             l += prefix_space + "i32.const {}\n".format(addr_offset) + prefix_space + "call $instrument_i64store8_off  ;; " + lines[idx].strip()
-            new_func_txt += l + '\n'
 
         elif mat := re.match(r'call\s\$(\w+)', l):
             callee_name = mat.group(1)
             if callee_name in callee_names_list:
                 l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
                 l += lines[idx]
-                new_func_txt += l + '\n'
             else:
-                new_func_txt += lines[idx] + '\n'
-
+                l = prefix_space + l
         else:
-            new_func_txt += lines[idx] + '\n'
+            l = prefix_space + l
+
+        if end_bracket:
+            if l.rfind(';;') != -1:
+                l += '\n' + prefix_space
+            l += ')'
+        new_func_txt += l + '\n'
+
         idx += 1
     return new_func_txt
 
