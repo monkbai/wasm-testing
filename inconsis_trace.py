@@ -72,7 +72,33 @@ def fix_recheck():
     print(fixed_list)
 
 
+def m32_check(dir_path: str):
+    # Re-run the experiment with -m32 option
+    fp_list = []  # False Positives due to w/o -m32 option
+    tp_list = []
+    file_idx = 0
+    while file_idx < 2000:
+        c_path = os.path.join(dir_path, 'test{}.c'.format(file_idx))
+        if not os.path.exists(c_path):
+            file_idx += 1
+            continue
+
+        glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(c_path, clang_opt_level='-O0', emcc_opt_level='-O2')
+
+        if len(glob_correct) == 0 and len(func_correct) == 0 and len(glob_perf) == 0 and len(func_perf) == 0:
+            utils.cmd("mv {} {}".format(c_path, os.path.join(dir_path, "m32_FPs")))
+            fp_list.append(file_idx)
+        else:
+            tp_list.append(file_idx)
+
+        file_idx += 1
+    print("fp_list: {}\n{}".format(len(fp_list), fp_list))
+    print("tp_list: {}\n{}".format(len(tp_list), tp_list))
+
+
 if __name__ == '__main__':
     # fix_recheck()
     # exit(0)
-    main()
+    # main()
+
+    m32_check("./debug_cases/")

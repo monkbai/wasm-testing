@@ -3,6 +3,7 @@ import os
 import sys
 import copy
 
+import config
 import lcs
 import profile
 import pointed_objs
@@ -145,14 +146,16 @@ def get_name_and_addr(glob_obj: dict):
                 glob_array_dict[obj_key] = (obj_list, (obj_addr, obj_addr+(obj_num-1)*step_size, step_size))
                 return obj_list, (obj_addr, obj_addr+(obj_num-1)*step_size, step_size)
         elif '*' in obj_type and '[' in obj_type:
-            return [], (0, 0, 8)  # pointer array, ignore
+            return [], (0, 0, config.pointer_size)  # pointer array, ignore
         else:
             assert False
 
     else:  # single addr
         # step_size of single var may never be used, but just in case
-        if "int64" in obj_type or '*' in obj_type or "long int" in obj_type:
+        if "int64" in obj_type or "long int" in obj_type:
             step_size = 8
+        elif '*' in obj_type:  # pointer type
+            step_size = config.pointer_size
         elif "int32" in obj_type or '"int"' in obj_type:
             step_size = 4
         elif "int16" in obj_type:

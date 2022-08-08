@@ -61,7 +61,7 @@ def print_func_arg_size(func_objs: list, param_dict: dict, func_param_file: str)
                     else:
                         assert False, "var type: {} not implemented".format(arg_type)
                 elif '[' in arg_type or '*' in arg_type:  # array or pointer
-                    arg_size = 8
+                    arg_size = config.pointer_size
                 else:
                     assert False, "arg type: {} not implemented".format(arg_type)
                 f.write(str(arg_size) + '\n')
@@ -104,7 +104,9 @@ def instrument(c_src_path: str, glob_objs: list, func_objs: list, param_dict: di
     print_func_arg_size(func_objs, param_dict, param_file)
 
     # run pin_tool, get raw trace
-    pintool.get_raw_trace(elf_path, glob_addr_file, func_addr_file, ret_func_addr_file, param_file, trace_path)
+    # pintool.get_raw_trace(elf_path, glob_addr_file, func_addr_file, ret_func_addr_file, param_file, trace_path)
+    # use m32 instead
+    pintool.get_raw_m32trace(elf_path, glob_addr_file, func_addr_file, ret_func_addr_file, param_file, trace_path)
 
     return trace_path
 
