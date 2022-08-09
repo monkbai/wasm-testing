@@ -555,9 +555,9 @@ def trace_check_glob_perf(wasm_glob_trace_dict: dict, clang_glob_trace_dict: dic
                 if idx not in lcs_trace:
                     break
             if '*' in obj["DW_AT_type"]:
-                inconsistent_list.append("{}:{}".format(glob_name, 'ptr'))
+                inconsistent_list.append("{}:{}:{}".format(glob_name, 'ptr', len(glob_trace) - len(lcs_trace)))
             else:
-                inconsistent_list.append("{}:{}".format(glob_name, glob_trace[idx]))
+                inconsistent_list.append("{}:{}:{}".format(glob_name, glob_trace[idx], len(glob_trace) - len(lcs_trace)))
             if debug_mode:
                 if glob_trace[-1] == clang_trace[-1]:
                     print('>Glob trace performance inconsistency founded.')
@@ -768,7 +768,7 @@ def main():
     global debug_mode
     # test
     # c_src_path = './missopt_cases/bug_cases/test6_re_re.c'
-    c_src_path = './testcases/under_opt_gcc/test1976.c'
+    c_src_path = './testcases/under_opt_gcc/test1179.c'
     debug_mode = True
     obj_lists = trace_check(c_src_path, clang_opt_level='-O3', emcc_opt_level='-O3')
     utils.obj_to_json(obj_lists, 'test1495_re.gt.json')

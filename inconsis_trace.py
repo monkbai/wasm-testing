@@ -76,7 +76,7 @@ def m32_check(dir_path: str):
     # Re-run the experiment with -m32 option
     fp_list = []  # False Positives due to w/o -m32 option
     tp_list = []
-    file_idx = 0
+    file_idx = 0  # 1634 floating point exception
     while file_idx < 2000:
         c_path = os.path.join(dir_path, 'test{}.c'.format(file_idx))
         if not os.path.exists(c_path):

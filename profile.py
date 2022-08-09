@@ -192,10 +192,18 @@ def replace_abstract_origin(dwarf_obj: str):
     return dwarf_obj
 
 
+def get_func_obj_start_addr(obj_str: str):
+    if mat := re.search(r"DW_AT_low_pc	\(([0-9A-Fa-fxX]+)\)", obj_str):
+        low_pc = int(mat.group(1), 16)
+        return low_pc
+
+
 def traverse_dwarf_subprogs(dwarf_path: str):
     func_objs = []
     param_dict = dict()
     func_names_list = []
+
+    func_start_addr_set = set()  # filter func_objs, remove functions with the same start address (only keep one)
 
     current_func = dict()
     with open(dwarf_path, 'r') as f:
@@ -211,8 +219,11 @@ def traverse_dwarf_subprogs(dwarf_path: str):
 
             obj_addr, obj_type, obj_dict = parse_dwarf_obj(obj)
             if obj_type == "DW_TAG_subprogram":
-                func_objs.append((obj_addr, obj_dict))
-                func_names_list.append(obj_dict["DW_AT_name"])
+                start_addr = get_func_obj_start_addr(obj)
+                if start_addr and start_addr not in func_start_addr_set:
+                    func_objs.append((obj_addr, obj_dict))
+                    func_names_list.append(obj_dict["DW_AT_name"])
+                    func_start_addr_set.add(start_addr)
                 current_func = obj_dict
             elif obj_type == "DW_TAG_formal_parameter":
 
