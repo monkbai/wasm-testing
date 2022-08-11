@@ -5,6 +5,7 @@ import re
 import sys
 
 import utils
+import add_extern
 import trace_consistency
 
 
@@ -90,7 +91,51 @@ def m32_check():
     print("tp_list: {}\n{}".format(len(tp_case_ids), tp_case_ids))
 
 
+def extern_check():
+    file_idx = 0
+    fp_case_ids = []
+    tp_case_ids = []
+    while file_idx < 2000:
+        c_path = os.path.join('./testcases/under_opt_gcc', 'test{}.c'.format(file_idx))
+        if not os.path.exists(c_path):
+            file_idx += 1
+            continue
+        glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(c_path, clang_opt_level='-O3', emcc_opt_level='-O3')
+
+        glob_name_list = []
+        for g_p in glob_perf:
+            if ':' in g_p:
+                g_p = g_p[:g_p.find(':')]
+            glob_name_list.append(g_p)
+
+        new_c_path = os.path.join('./testcases/under_opt_gcc', 'test{}_ex.c'.format(file_idx))
+        add_extern.add_extern_specifier(c_path, new_c_path, glob_name_list)
+        glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(new_c_path, clang_opt_level='-O3', emcc_opt_level='-O3')
+
+        if len(glob_correct) == 0 and len(func_correct) == 0 and (len(glob_perf) != 0 or len(func_perf) != 0):
+            tp_case_ids.append(file_idx)
+            print(file_idx)
+        else:
+            fp_case_ids.append(file_idx)
+            status, output = utils.cmd("mv ./testcases/under_opt_gcc/test{}.c {}".format(file_idx, "./testcases/under_opt_gcc/extern_FPs/"))
+            status, output = utils.cmd("mv ./testcases/under_opt_gcc/test{}_ex.c {}".format(file_idx, "./testcases/under_opt_gcc/extern_FPs/"))
+
+        status, output = utils.cmd("rm ./testcases/under_opt_gcc/test{}.c.*".format(file_idx))
+        status, output = utils.cmd("rm ./testcases/under_opt_gcc/test{}_ex.c.*".format(file_idx))
+        status, output = utils.cmd("rm ./testcases/under_opt_gcc/test{}.out".format(file_idx))
+        status, output = utils.cmd("rm ./testcases/under_opt_gcc/test{}_ex.out".format(file_idx))
+        status, output = utils.cmd("rm ./testcases/under_opt_gcc/*.js".format(file_idx))
+        status, output = utils.cmd("rm ./testcases/under_opt_gcc/*.wasm".format(file_idx))
+        status, output = utils.cmd("rm ./testcases/under_opt_gcc/*.wat".format(file_idx))
+        status, output = utils.cmd("rm ./testcases/under_opt_gcc/*.dwarf".format(file_idx))
+        status, output = utils.cmd("rm ./testcases/under_opt_gcc/*.trace".format(file_idx))
+        file_idx += 1
+    print("fp_list: {}\n{}".format(len(fp_case_ids), fp_case_ids))
+    print("tp_list: {}\n{}".format(len(tp_case_ids), tp_case_ids))
+
+
 if __name__ == '__main__':
-    m32_check()
+    # m32_check()
+    extern_check()
     exit(0)
     main()
