@@ -288,8 +288,7 @@ def _instrument_func_line(func_txt: str):
         elif mat := re.match(r'call\s\$(\w+)', l):
             callee_name = mat.group(1)
             if callee_name in callee_names_list:
-                l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n"
-                l += lines[idx]
+                l = prefix_space + "i32.const {}\n".format(get_instrument_id()) + prefix_space + "call $myprint_i32id\n" + l
             else:
                 l = prefix_space + l
         else:

@@ -60,17 +60,17 @@ def run_single_prog(prog_path):
     return stdout.decode('utf-8'), proc.returncode
 
 
-def csmith_generate(c_path: str):
+def csmith_generate(c_path: str, csmithcmd=config.csmith_cmd):
     c_path = os.path.abspath(c_path)
     elf_path = c_path[:c_path.rfind('.')] + '.out'
 
     while True:
-        status, output = cmd(config.csmith_cmd.format(c_path))
+        status, output = cmd(csmithcmd.format(c_path))
         assert status == 0
 
         # avoid huge test case, which is hard to locate bug statement
         file_size = os.path.getsize(c_path)
-        if file_size >= 1024 * 100:  # TODO: size limit 100KB
+        if file_size >= 1024 * 50:  # TODO: size limit 50KB
             continue
 
         status, output = cmd(config.csmith_compile_cmd.format(c_path, elf_path))
@@ -167,3 +167,17 @@ def json_to_obj(json_path: str):
         j_txt = f.read()
         list_obj = json.loads(s=j_txt)
         return list_obj
+
+
+if __name__ == '__main__':
+    dir_path = '/home/tester/Documents/EMI/DecFuzzer/testcases_emi'
+    file_idx = 0
+    while file_idx < 200:
+        c_path = os.path.join(dir_path, 'test{}.c'.format(file_idx))
+        csmith_generate(c_path, config.csmith_simple_cmd)
+        while not udf_checking(c_path) or not crash_checking(c_path, opt_level='-O0'):  # undefined behaviour check
+            csmith_generate(c_path, config.csmith_simple_cmd)
+
+        file_idx += 1
+
+    print(file_idx)
