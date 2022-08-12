@@ -36,28 +36,43 @@ def main_test():
     print(file_idx)
 
 
-def main():
+def main(dir_path='./testcases'):
     file_idx = 1121  # this one timeout --> undefined behaviour?
     file_idx = 1821  # check: pointed_objs --> get_wasm_strs
+    file_idx = 0
     while file_idx < 2000:
-        c_path = os.path.join('./testcases', 'test{}.c'.format(file_idx))
+        c_path = os.path.join(dir_path, 'test{}.c'.format(file_idx))
         # get_one_csmith(c_path)
+        if not os.path.exists(c_path):
+            file_idx += 1
+            continue
+
         glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(c_path, clang_opt_level='-O3', emcc_opt_level='-O3')
         # output1, status = utils.run_single_prog("./testcases/test{}.out".format(file_idx))
         # output2, status = utils.run_single_prog("node ./testcases/test{}.js".format(file_idx))
         if len(glob_correct) == 0 and len(func_correct) == 0:
             if len(glob_perf) != 0 or len(func_perf) != 0:
-                status, output = utils.cmd("cp ./testcases/test{}.c ./testcases/under_opt_gcc/test{}.c".format(file_idx, file_idx))
+                f1 = os.path.join(dir_path, 'test{}.c'.format(file_idx))
+                f2 = os.path.join(dir_path + '/under_opt_clang', 'test{}.c'.format(file_idx))
+                status, output = utils.cmd("cp {} {}".format(f1, f2))
+            else:
+                f1 = os.path.join(dir_path, 'test{}.c'.format(file_idx))
+                f2 = os.path.join(dir_path + '/O3_FPs', 'test{}.c'.format(file_idx))
+                # status, output = utils.cmd("cp {} {}".format(f1, f2))
         elif len(glob_correct) != 0 or len(func_correct) != 0:
-            status, output = utils.cmd("cp ./testcases/test{}.c ./testcases/func_bug_gcc/test{}.c".format(file_idx, file_idx))
+            # if output1 == output2:
+            #     print("same checksum.")
+            f1 = os.path.join(dir_path, 'test{}.c'.format(file_idx))
+            f2 = os.path.join(dir_path + '/func_bug_clang', 'test{}.c'.format(file_idx))
+            status, output = utils.cmd("cp {} {}".format(f1, f2))
 
-        status, output = utils.cmd("rm ./testcases/test{}.c.*".format(file_idx))
-        status, output = utils.cmd("rm ./testcases/test{}.out".format(file_idx))
-        status, output = utils.cmd("rm ./testcases/*.js".format(file_idx))
-        status, output = utils.cmd("rm ./testcases/*.wasm".format(file_idx))
-        status, output = utils.cmd("rm ./testcases/*.wat".format(file_idx))
-        status, output = utils.cmd("rm ./testcases/*.dwarf".format(file_idx))
-        status, output = utils.cmd("rm ./testcases/*.trace".format(file_idx))
+        status, output = utils.cmd("rm {}/test{}.c.*".format(dir_path, file_idx))
+        status, output = utils.cmd("rm {}/test{}.out".format(dir_path, file_idx))
+        status, output = utils.cmd("rm {}/*.js".format(dir_path, file_idx))
+        status, output = utils.cmd("rm {}/*.wasm".format(dir_path, file_idx))
+        status, output = utils.cmd("rm {}/*.wat".format(dir_path, file_idx))
+        status, output = utils.cmd("rm {}/*.dwarf".format(dir_path, file_idx))
+        status, output = utils.cmd("rm {}/*.trace".format(dir_path, file_idx))
         file_idx += 1
     print(file_idx)
 
@@ -136,6 +151,6 @@ def extern_check():
 
 if __name__ == '__main__':
     # m32_check()
-    extern_check()
-    exit(0)
-    main()
+    # extern_check()
+    # exit(0)
+    main('./testcases')

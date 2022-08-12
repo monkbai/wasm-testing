@@ -1,11 +1,13 @@
 import os
 import re
 import sys
+
 import utils
 import config
 
 
 def compile_llvm_ir(c_src_path: str):
+    """ Deprecated """
     c_src_path = os.path.abspath(c_src_path)
     dir_path = os.path.dirname(c_src_path)
     ll_path = os.path.join(dir_path, 'tmp.ll')
@@ -20,6 +22,7 @@ def compile_llvm_ir(c_src_path: str):
 
 
 def get_global_vars(c_src_path: str):
+    """ Deprecated """
     glob_vars_list = []
 
     ll_path = compile_llvm_ir(c_src_path)
