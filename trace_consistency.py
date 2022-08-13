@@ -377,6 +377,9 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
                                 obj_list, (min_addr, max_addr, step_size) = get_name_and_addr(obj)  # only to get step_size
                                 break
 
+                        if not step_size:
+                            break  # complex structure
+
                         # founded the corresponding global variable and the step_size,
                         # now split the 16 bytes into consecutive writes
                         mask = 1
@@ -782,10 +785,10 @@ def main():
     global debug_mode
     # test
     # c_src_path = './missopt_cases/bug_cases/test6_re_re.c'
-    c_src_path = './tmp.c'
-    # c_src_path = "./testcases/under_opt_gcc/test1976_re.c"
+    # c_src_path = './tmp.c'
+    c_src_path = "./testcases/test45.c"
     debug_mode = False
-    obj_lists = trace_check(c_src_path, clang_opt_level='-O2', emcc_opt_level='-O2')
+    obj_lists = trace_check(c_src_path, clang_opt_level='-O3', emcc_opt_level='-O3')
     utils.obj_to_json(obj_lists, 'test1495_re.gt.json')
 
 
@@ -823,6 +826,27 @@ def test2(debug_dir="./debug_cases"):
             trace_check(f)
 
 
+def test_debug(debug_dir="./debug_cases"):
+    tp_list = []
+    debug_dir = os.path.abspath(debug_dir)
+    files = os.listdir(debug_dir)
+    files.sort()
+    for f in files:
+        if f.endswith('.c') and '_re' not in f:
+
+            c_path = os.path.join(debug_dir, f)
+
+            wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_path, opt_level='-O2')
+            elf_path, dwarf_path = profile.clang_dwarf(c_path, opt_level='-O2')
+            output1, status = utils.run_single_prog(elf_path)
+            output2, status = utils.run_single_prog("node {}".format(js_path))
+            if output1 != output2:
+                tp_list.append(c_path)
+            else:
+                status, output = utils.cmd("mv {} {}".format(c_path, os.path.join(debug_dir+"/O2_FPs", f)))
+    print(tp_list)
+
+
 if __name__ == '__main__':
     main()
-    # test()
+    # test_debug()
