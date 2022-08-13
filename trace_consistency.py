@@ -713,7 +713,7 @@ def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
     elf_path = c_src_path[:c_src_path.rfind('.')] + '.out'
     wasm_path = c_src_path[:c_src_path.rfind('.')] + '.wasm'
     status, output = utils.cmd("rm {}".format(os.path.abspath(elf_path)))
-    status, output = utils.cmd("rm {}".format(os.path.abspath(elf_path)))
+    status, output = utils.cmd("rm {}".format(os.path.abspath(wasm_path)))
 
     print("\nTrace Consistency Checking for {}...".format(c_src_path))
     # profile, get dwarf information of global variables and function arguments
@@ -783,13 +783,34 @@ def main():
     # test
     # c_src_path = './missopt_cases/bug_cases/test6_re_re.c'
     c_src_path = './tmp.c'
-    c_src_path = "./testcases/under_opt_gcc/test1101_re_re.c"
+    # c_src_path = "./testcases/under_opt_gcc/test1976_re.c"
     debug_mode = False
-    obj_lists = trace_check(c_src_path, clang_opt_level='-O3', emcc_opt_level='-O3')
+    obj_lists = trace_check(c_src_path, clang_opt_level='-O2', emcc_opt_level='-O2')
     utils.obj_to_json(obj_lists, 'test1495_re.gt.json')
 
 
-def test(debug_dir="./debug_cases"):
+def test(debug_dir="./testcases/func_bug_gcc"):
+    tp_list = []
+    debug_dir = os.path.abspath(debug_dir)
+    files = os.listdir(debug_dir)
+    files.sort()
+    for f in files:
+        if f.endswith('.c'):
+
+            c_path = os.path.join(debug_dir, f)
+
+            wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_path, opt_level='-O2')
+            elf_path, dwarf_path = profile.clang_dwarf(c_path, opt_level='-O1')
+            output1, status = utils.run_single_prog(elf_path)
+            output2, status = utils.run_single_prog("node {}".format(js_path))
+            if output1 != output2:
+                tp_list.append(c_path)
+            else:
+                status, output = utils.cmd("mv {} {}".format(c_path, os.path.join(debug_dir+"/UndefinedBehavior", f)))
+    print(tp_list)
+
+
+def test2(debug_dir="./debug_cases"):
     skip_list = ["1001.c", "1008.c"]
     debug_dir = os.path.abspath(debug_dir)
     files = os.listdir(debug_dir)

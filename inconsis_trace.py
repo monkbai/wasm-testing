@@ -5,6 +5,7 @@ import re
 import sys
 
 import utils
+import profile
 import trace_consistency
 
 
@@ -96,9 +97,39 @@ def m32_check(dir_path: str):
     print("tp_list: {}\n{}".format(len(tp_list), tp_list))
 
 
+def main_emi(dir_path="/home/tester/Documents/EMI/DecFuzzer/testcases_emi"):
+    for i in range(200):
+        for j in range(10):
+            c_path = os.path.join(dir_path, 'test{}-{}.c'.format(i, j))
+
+            out_path = c_path[:-2] + '.out'
+            js_path = c_path[:-2] + '.js'
+
+            glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(c_path,
+                                                                                             clang_opt_level='-O0',
+                                                                                             emcc_opt_level='-O2')
+
+            wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_path, opt_level='-O2')
+            output1, status = utils.run_single_prog(out_path)
+            output2, status = utils.run_single_prog("node {}".format(js_path))
+            if len(glob_correct) == 0 and len(func_correct) == 0:
+                if output1.strip() != output2.strip():
+                    f1 = os.path.join(dir_path + '/func_bug_FNs', 'test{}-{}.c'.format(i, j))
+                    status, output = utils.cmd("cp {} {}".format(c_path, f1))
+            else:
+                if output1.strip() != output2.strip():
+                    f1 = os.path.join(dir_path + '/func_bug_clang15', 'test{}-{}.c'.format(i, j))
+                    status, output = utils.cmd("cp {} {}".format(c_path, f1))
+                else:
+                    f1 = os.path.join(dir_path + '/func_bug_FPs', 'test{}-{}.c'.format(i, j))
+                    status, output = utils.cmd("cp {} {}".format(c_path, f1))
+
+
 if __name__ == '__main__':
     # fix_recheck()
+    # m32_check("./debug_cases/")
     # exit(0)
-    # main()
 
-    m32_check("./debug_cases/")
+    # main()
+    main_emi()
+
