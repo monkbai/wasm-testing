@@ -379,18 +379,14 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
 
                         # founded the corresponding global variable and the step_size,
                         # now split the 16 bytes into consecutive writes
-                        if step_size == 8:
-                            glob_trace_add(glob_name, (write_value & 0xffffffffffffffff, aux_info))
-                            write_value = write_value >> 64
-                            write_size -= step_size
-                            write_addr += 8
-                        elif step_size == 4:
-                            glob_trace_add(glob_name, (write_value & 0xffffffff, aux_info))
-                            write_value = write_value >> 32
-                            write_size -= step_size
-                            write_addr += 4
-                        else:  # complex struct/union, ignore this write
-                            break  # assert False
+                        mask = 1
+                        for i in range(step_size * 8 - 1):
+                            mask = (mask << 1) | 1
+
+                        glob_trace_add(glob_name, (write_value & mask, aux_info))
+                        write_value = write_value >> (8 * step_size)
+                        write_size -= step_size
+                        write_addr += step_size
                     aux_info = ""
                 else:
                     glob_name = ''  # find corresponding global name
@@ -404,15 +400,33 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
                             break
 
                     if len(glob_name) != 0:
-                        # it's possible len(glob_name)==0, some complex cases are not handled
-                        if step_size != write_size:
-                            # due to compiler optimization
-                            # currently, we cannot get the while value of this obj
-                            # add an extra auxiliary info
-                            aux_info = "OPT\n"+aux_info
+                        if step_size < write_size:
+                            while write_size > 0:
+                                glob_name = ''  # find corresponding global name
+                                if write_addr in lcs.PtrItem.clang_objs_dict:
+                                    glob_name, wasm_addr = lcs.PtrItem.clang_objs_dict[write_addr]
+                                    glob_key = glob_name if '[' not in glob_name else glob_name[:glob_name.find('[')]
 
-                        glob_trace_add(glob_name, (write_value, aux_info))
-                        aux_info = ""
+                                mask = 1
+                                for i in range(step_size * 8 - 1):
+                                    mask = (mask << 1) | 1
+
+                                glob_trace_add(glob_name, (write_value & mask, aux_info))
+                                write_value = write_value >> (8 * step_size)
+                                write_size -= step_size
+                                write_addr += step_size
+
+                            aux_info = ""
+                        # it's possible len(glob_name)==0, some complex cases are not handled
+                        else:
+                            if step_size > write_size:
+                                # due to compiler optimization
+                                # currently, we cannot get the while value of this obj
+                                # add an extra auxiliary info
+                                aux_info = "OPT\n"+aux_info
+
+                            glob_trace_add(glob_name, (write_value, aux_info))
+                            aux_info = ""
 
             elif l.startswith('P: ') or l.startswith('V: '):
                 assert False, 'error during parsing raw wasm trace.'
@@ -769,6 +783,7 @@ def main():
     # test
     # c_src_path = './missopt_cases/bug_cases/test6_re_re.c'
     c_src_path = './tmp.c'
+    c_src_path = "./testcases/under_opt_gcc/test1101_re_re.c"
     debug_mode = False
     obj_lists = trace_check(c_src_path, clang_opt_level='-O3', emcc_opt_level='-O3')
     utils.obj_to_json(obj_lists, 'test1495_re.gt.json')
