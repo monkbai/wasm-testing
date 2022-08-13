@@ -56,30 +56,33 @@ def reduce_c(c_path: str, reduced_path: str, check_type="functionality", clang_o
     # move to the target directory
     base_dir = os.path.dirname(reduced_path)
     utils.project_dir, base_dir = base_dir, utils.project_dir
+    # print(creduce_path + ' ./{} '.format(os.path.basename(test_sh_path)) + os.path.basename(reduced_path))
     status, output = utils.cmd(creduce_path + ' ./{} '.format(os.path.basename(test_sh_path)) + os.path.basename(reduced_path))
     if status != 0:
         print('failed to reduce {}:\n'.format(c_path), output)
     # restore utils project_dir
     utils.project_dir, base_dir = base_dir, utils.project_dir
+    print("{} reduced.".format(c_path))
 
 
-def reduce(error_dir='./debug_cases'):
+def reduce(error_dir='./testcases/func_bug_gcc/'):
     files = os.listdir(error_dir)
     files.sort()
     for f in files:
         if f.endswith('.c') and '_re' not in f and not os.path.exists(f[:-2]+'_re.c'):
             c_path = os.path.join(error_dir, f)
             reduced_path = c_path[:-2] + '_re.c'
-            reduce_c(c_path, reduced_path, check_type="functionality", clang_opt_level='-O0', emcc_opt_level='-O2')
+            reduce_c(c_path, reduced_path, check_type="functionality", clang_opt_level='-O0', emcc_opt_level='-O3')
 
 
-def reduce_opt(error_dir='./missopt_cases/bug_cases/'):
+def reduce_opt(error_dir='./testcases/under_opt_gcc/'):
     files = os.listdir(error_dir)
     files.sort()
     for f in files:
-        if f.endswith('.c') and '_re' not in f and not os.path.exists(f[:-2]+'_re.c'):
+        if f.endswith('.c') and '_ex' not in f and '_re' not in f and not os.path.exists(f[:-2]+'_re.c'):
             c_path = os.path.join(error_dir, f)
             reduced_path = c_path[:-2] + '_re.c'
+            c_path = c_path[:-2] + '_ex.c'
             reduce_c(c_path, reduced_path, check_type="optimization", clang_opt_level='-O3', emcc_opt_level='-O3')
 
 
@@ -87,15 +90,16 @@ def worker(sleep_time: int):
     time.sleep(sleep_time * 5)
     try:
         reduce()
+        # reduce_opt()
     except Exception as e:
         pass
 
 
 if __name__ == '__main__':
-    # reduce_c('./debug_cases/test336.c', './debug_cases/test336_re.c', check_type="functionality", clang_opt_level='-O0', emcc_opt_level='-O2')
+    # reduce_c('./testcases/under_opt_gcc/test922.c', './testcases/under_opt_gcc/test922_re.c', check_type="optimization", clang_opt_level='-O3', emcc_opt_level='-O3')
     # reduce()
-    reduce_opt()
-    exit(0)
+    # reduce_opt()
+    # exit(0)
 
     with Pool(8) as p:
         p.starmap(worker, [(i,) for i in range(8)])

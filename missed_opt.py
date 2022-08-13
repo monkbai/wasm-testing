@@ -48,24 +48,30 @@ def main(dir_path='./testcases'):
             continue
 
         glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(c_path, clang_opt_level='-O3', emcc_opt_level='-O3')
-        # output1, status = utils.run_single_prog("./testcases/test{}.out".format(file_idx))
-        # output2, status = utils.run_single_prog("node ./testcases/test{}.js".format(file_idx))
+        output1, status = utils.run_single_prog("./testcases/test{}.out".format(file_idx))
+        output2, status = utils.run_single_prog("node ./testcases/test{}.js".format(file_idx))
         if len(glob_correct) == 0 and len(func_correct) == 0:
             if len(glob_perf) != 0 or len(func_perf) != 0:
                 f1 = os.path.join(dir_path, 'test{}.c'.format(file_idx))
                 f2 = os.path.join(dir_path + '/under_opt_clang', 'test{}.c'.format(file_idx))
                 status, output = utils.cmd("cp {} {}".format(f1, f2))
             else:
-                f1 = os.path.join(dir_path, 'test{}.c'.format(file_idx))
-                f2 = os.path.join(dir_path + '/O3_FPs', 'test{}.c'.format(file_idx))
+                pass
+                # f1 = os.path.join(dir_path, 'test{}.c'.format(file_idx))
+                # f2 = os.path.join(dir_path + '/O3_FPs', 'test{}.c'.format(file_idx))
                 # status, output = utils.cmd("cp {} {}".format(f1, f2))
         elif len(glob_correct) != 0 or len(func_correct) != 0:
-            # if output1 == output2:
-            #     print("same checksum.")
-            f1 = os.path.join(dir_path, 'test{}.c'.format(file_idx))
-            f2 = os.path.join(dir_path + '/func_bug_clang', 'test{}.c'.format(file_idx))
-            status, output = utils.cmd("cp {} {}".format(f1, f2))
+            if output1 == output2:
+                print("same checksum.")
+                f1 = os.path.join(dir_path, 'test{}.c'.format(file_idx))
+                f2 = os.path.join(dir_path + '/func_bug_clang/O3_FPs', 'test{}.c'.format(file_idx))
+                status, output = utils.cmd("cp {} {}".format(f1, f2))
+            else:
+                f1 = os.path.join(dir_path, 'test{}.c'.format(file_idx))
+                f2 = os.path.join(dir_path + '/func_bug_clang', 'test{}.c'.format(file_idx))
+                status, output = utils.cmd("cp {} {}".format(f1, f2))
 
+        # input('continue?')
         status, output = utils.cmd("rm {}/test{}.c.*".format(dir_path, file_idx))
         status, output = utils.cmd("rm {}/test{}.out".format(dir_path, file_idx))
         status, output = utils.cmd("rm {}/*.js".format(dir_path, file_idx))
