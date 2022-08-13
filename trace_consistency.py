@@ -402,7 +402,7 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
                             obj_list, (min_addr, max_addr, step_size) = get_name_and_addr(obj)  # only to get step_size
                             break
 
-                    if len(glob_name) != 0:
+                    if len(glob_name) != 0 and step_size:
                         if step_size < write_size:
                             while write_size > 0:
                                 glob_name = ''  # find corresponding global name
