@@ -5,6 +5,7 @@ import re
 import sys
 
 import utils
+import profile
 import add_extern
 import trace_consistency
 
@@ -49,6 +50,7 @@ def main(dir_path='./testcases'):
 
         glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(c_path, clang_opt_level='-O3', emcc_opt_level='-O3')
         output1, status = utils.run_single_prog("./testcases/test{}.out".format(file_idx))
+        wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_path, opt_level='-O3')
         output2, status = utils.run_single_prog("node ./testcases/test{}.js".format(file_idx))
         if len(glob_correct) == 0 and len(func_correct) == 0:
             if len(glob_perf) != 0 or len(func_perf) != 0:
