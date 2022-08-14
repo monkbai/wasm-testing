@@ -157,8 +157,29 @@ def extern_check():
     print("tp_list: {}\n{}".format(len(tp_case_ids), tp_case_ids))
 
 
+def tmp():
+    file_idx = 0
+    while True:
+        c_path = os.path.join('./find_tp', 'test{}.c'.format(file_idx))
+        get_one_csmith(c_path)
+        # glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(c_path, clang_opt_level='-O3', emcc_opt_level='-O3')
+
+        wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_path, opt_level='-O3')
+        elf_path, dwarf_path = profile.clang_dwarf(c_path, opt_level='-O3')
+        output1, status = utils.run_single_prog(elf_path)
+        output2, status = utils.run_single_prog("node {}".format(js_path))
+        if output1 != output2:
+            break
+
+        status, output = utils.cmd("rm ./find_tp/test{}*".format(file_idx))
+        print(file_idx)
+        file_idx += 1
+    print(file_idx)
+
+
 if __name__ == '__main__':
     # m32_check()
     # extern_check()
     # exit(0)
-    main('./testcases')
+    # main('./testcases')
+    tmp()

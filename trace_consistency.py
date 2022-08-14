@@ -786,7 +786,7 @@ def main():
     # test
     # c_src_path = './missopt_cases/bug_cases/test6_re_re.c'
     # c_src_path = './tmp.c'
-    c_src_path = "./testcases/test45.c"
+    c_src_path = "./debug_cases/test1066.c"
     debug_mode = False
     obj_lists = trace_check(c_src_path, clang_opt_level='-O3', emcc_opt_level='-O3')
     utils.obj_to_json(obj_lists, 'test1495_re.gt.json')
@@ -849,5 +849,5 @@ def test_debug(debug_dir="./testcases/func_bug_clang"):
 
 
 if __name__ == '__main__':
-    # main()
-    test_debug()
+    main()
+    # test_debug()
