@@ -96,10 +96,10 @@ def worker(sleep_time: int):
 
 
 if __name__ == '__main__':
-    # reduce_c('./testcases/under_opt_gcc/test922.c', './testcases/under_opt_gcc/test922_re.c', check_type="optimization", clang_opt_level='-O3', emcc_opt_level='-O3')
+    reduce_c('./testcases/func_bug_clang/test1072.c', './testcases/func_bug_clang/test1072_re.c', check_type="functionality", clang_opt_level='-O0', emcc_opt_level='-O2')
     # reduce()
     # reduce_opt()
-    # exit(0)
+    exit(0)
 
     with Pool(8) as p:
         p.starmap(worker, [(i,) for i in range(8)])

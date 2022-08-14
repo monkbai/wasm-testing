@@ -826,24 +826,25 @@ def test2(debug_dir="./debug_cases"):
             trace_check(f)
 
 
-def test_debug(debug_dir="/home/tester/Documents/EMI/DecFuzzer/testcases_emi/func_bug_clang15"):
+def test_debug(debug_dir="./testcases/func_bug_clang"):
     tp_list = []
     debug_dir = os.path.abspath(debug_dir)
     files = os.listdir(debug_dir)
     files.sort()
     for f in files:
         if f.endswith('.c') and '_re' not in f:
-
+            print(f)
             c_path = os.path.join(debug_dir, f)
 
-            wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_path, opt_level='-O2')
-            elf_path, dwarf_path = profile.clang_dwarf(c_path, opt_level='-O2')
+            wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_path, opt_level='-O3')
+            elf_path, dwarf_path = profile.clang_dwarf(c_path, opt_level='-O3')
             output1, status = utils.run_single_prog(elf_path)
             output2, status = utils.run_single_prog("node {}".format(js_path))
             if output1 != output2:
                 tp_list.append(c_path)
             else:
-                status, output = utils.cmd("mv {} {}".format(c_path, os.path.join(debug_dir+"/O2_FPs", f)))
+                print("same output")
+                status, output = utils.cmd("mv {} {}".format(c_path, os.path.join(debug_dir+"/O3_FPs", f)))
     print(tp_list)
 
 
