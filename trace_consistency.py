@@ -826,7 +826,7 @@ def test2(debug_dir="./debug_cases"):
             trace_check(f)
 
 
-def test_debug(debug_dir="./debug_cases"):
+def test_debug(debug_dir="/home/tester/Documents/EMI/DecFuzzer/testcases_emi/func_bug_clang15"):
     tp_list = []
     debug_dir = os.path.abspath(debug_dir)
     files = os.listdir(debug_dir)
@@ -848,5 +848,5 @@ def test_debug(debug_dir="./debug_cases"):
 
 
 if __name__ == '__main__':
-    main()
-    # test_debug()
+    # main()
+    test_debug()
