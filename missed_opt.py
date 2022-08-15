@@ -3,6 +3,8 @@
 import os
 import re
 import sys
+import time
+from multiprocessing import Pool
 
 import utils
 import profile
@@ -157,10 +159,14 @@ def extern_check():
     print("tp_list: {}\n{}".format(len(tp_case_ids), tp_case_ids))
 
 
-def tmp():
-    file_idx = 0
+file_idx = 0
+def tmp(process_idx: int):
+    global file_idx
     while True:
-        c_path = os.path.join('./find_tp', 'test{}.c'.format(file_idx))
+        tmp_file_idx = file_idx
+        file_idx += 1
+        # print(tmp_file_idx)
+        c_path = os.path.join('./find_tp', 'test{}-{}.c'.format(process_idx, tmp_file_idx))
         get_one_csmith(c_path)
         # glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(c_path, clang_opt_level='-O3', emcc_opt_level='-O3')
 
@@ -171,10 +177,17 @@ def tmp():
         if output1 != output2:
             break
 
-        status, output = utils.cmd("rm ./find_tp/test{}*".format(file_idx))
-        print(file_idx)
-        file_idx += 1
-    print(file_idx)
+        status, output = utils.cmd("rm ./find_tp/test{}-{}.*".format(process_idx, tmp_file_idx))
+        
+    print("Possible case: test{}-{}".format(process_idx, tmp_file_idx))
+
+
+def worker(sleep_time: int):
+    time.sleep(sleep_time * 1)
+    try:
+        tmp(sleep_time)
+    except Exception as e:
+        pass
 
 
 if __name__ == '__main__':
@@ -182,4 +195,8 @@ if __name__ == '__main__':
     # extern_check()
     # exit(0)
     # main('./testcases')
-    tmp()
+    
+    # tmp()
+    with Pool(16) as p:
+        p.starmap(worker, [(i,) for i in range(16)])
+

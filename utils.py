@@ -173,6 +173,7 @@ def wasm_opt(wasm_path: str, wasm_opt_level='-O3'):
 
     status, output = cmd(config.wasm_opt_cmd.format(wasm_opt_level, wasm_path, wasm_path))
     if status:
+        print("Warning: failed to execute wasm-opt!")
         return
     # regenerate the dwarf file
     status, output = cmd(config.dwarfdump_cmd.format(wasm_path, dwarf_txt_path))
