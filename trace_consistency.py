@@ -711,19 +711,27 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
     return inconsistent_list
 
 
-def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
+def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2', need_compile=True):
     # clean
+    c_src_path = os.path.abspath(c_src_path)
+    assert c_src_path.endswith('.c')
     elf_path = c_src_path[:c_src_path.rfind('.')] + '.out'
+    clang_dwarf_txt_path = elf_path + '.dwarf'
+
     wasm_path = c_src_path[:c_src_path.rfind('.')] + '.wasm'
-    status, output = utils.cmd("rm {}".format(os.path.abspath(elf_path)))
-    status, output = utils.cmd("rm {}".format(os.path.abspath(wasm_path)))
+    js_path = c_src_path[:-2] + '.js'
+    wasm_dwarf_txt_path = wasm_path + '.dwarf'
+
+    if need_compile:
+        status, output = utils.cmd("rm {}".format(os.path.abspath(elf_path)))
+        status, output = utils.cmd("rm {}".format(os.path.abspath(wasm_path)))
 
     print("\nTrace Consistency Checking for {}...".format(c_src_path))
     # profile, get dwarf information of global variables and function arguments
-    wasm_globs, clang_globs = profile.collect_glob_vars(c_src_path, clang_opt_level, emcc_opt_level)
+    wasm_globs, clang_globs = profile.collect_glob_vars(c_src_path, clang_opt_level, emcc_opt_level, need_compile)
     (wasm_func_objs, wasm_param_dict, wasm_func_names_list), \
-        (clang_func_objs, clang_param_dict, clang_func_names_list) = profile.collect_funcs(c_src_path, clang_opt_level, emcc_opt_level)
-    wasm_globs_all = profile.get_wasm_globs(c_src_path, emcc_opt_level)
+        (clang_func_objs, clang_param_dict, clang_func_names_list) = profile.collect_funcs(c_src_path, clang_opt_level, emcc_opt_level, need_compile)
+    wasm_globs_all = profile.get_wasm_globs(c_src_path, emcc_opt_level, need_compile)
 
     if len(wasm_globs) == 0:
         if debug_mode:
@@ -731,14 +739,16 @@ def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
         return [], [], [], []
 
     # compile
-    wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_src_path, opt_level=emcc_opt_level)
-    elf_path, dwarf_path = profile.clang_dwarf(c_src_path, opt_level=clang_opt_level)
+    if need_compile:
+        wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_src_path, opt_level=emcc_opt_level)
+        elf_path, dwarf_path = profile.clang_dwarf(c_src_path, opt_level=clang_opt_level)
 
     # Before checking
-    wat_path = wasm_path[:-5] + '.wat'
-    if not os.path.exists(wat_path):
-        wat_path = utils.wasm2wat(wasm_path)
-    mapping_dict, wasm_objs_dict, clang_objs_dict = pointed_objs.get_pointed_objs_mapping(c_src_path, elf_path, wat_path, clang_opt_level, emcc_opt_level)
+    # wat_path = wasm_path[:-5] + '.wat'
+    # if not os.path.exists(wat_path):
+    wat_path = utils.wasm2wat(wasm_path)
+
+    mapping_dict, wasm_objs_dict, clang_objs_dict = pointed_objs.get_pointed_objs_mapping(c_src_path, elf_path, wat_path, clang_opt_level, emcc_opt_level, need_compile)
     lcs.FuncItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
     lcs.PtrItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
 
@@ -786,9 +796,9 @@ def main():
     # test
     # c_src_path = './missopt_cases/bug_cases/test6_re_re.c'
     # c_src_path = './tmp.c'
-    c_src_path = "./debug_cases/test1066.c"
+    c_src_path = "./find_wasm_opt/test0-0.c"
     debug_mode = False
-    obj_lists = trace_check(c_src_path, clang_opt_level='-O3', emcc_opt_level='-O3')
+    obj_lists = trace_check(c_src_path, clang_opt_level='-O3', emcc_opt_level='-O3', need_compile=False)
     utils.obj_to_json(obj_lists, 'test1495_re.gt.json')
 
 

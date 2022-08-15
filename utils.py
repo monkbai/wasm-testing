@@ -154,6 +154,34 @@ def crash_checking(c_path: str, opt_level='-O0'):
     return True
 
 
+def get_one_csmith(c_path: str):
+    csmith_generate(c_path)  # with size limit
+    while not udf_checking(c_path) or not crash_checking(c_path, opt_level='-O0'):  # undefined behaviour check
+        csmith_generate(c_path)
+
+
+def wasm_opt(wasm_path: str, wasm_opt_level='-O3'):
+    global project_dir
+
+    wasm_path = os.path.abspath(wasm_path)
+    dir_path = os.path.dirname(wasm_path)
+    assert wasm_path.endswith('.wasm')
+    dwarf_txt_path = wasm_path + '.dwarf'
+
+    tmp_dir = project_dir
+    project_dir = dir_path
+
+    status, output = cmd(config.wasm_opt_cmd.format(wasm_opt_level, wasm_path, wasm_path))
+    if status:
+        return
+    # regenerate the dwarf file
+    status, output = cmd(config.dwarfdump_cmd.format(wasm_path, dwarf_txt_path))
+
+    project_dir = tmp_dir
+
+    return wasm_path, dwarf_txt_path
+
+
 def obj_to_json(dict_obj, output_path: str):
     j = json.dumps(dict_obj, sort_keys=True, indent=4)
     with open(output_path, 'w') as f:

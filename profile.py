@@ -184,7 +184,7 @@ def replace_abstract_origin(dwarf_obj: str):
     """
     # seems we should handle this case as well
     if mat := re.search(r'DW_AT_abstract_origin\s\((\w+) "(\w+)"\)', dwarf_obj):
-        # transform it to DW_AT_name, so the traverse function can hanlde this as well
+        # transform it to DW_AT_name, so the traverse function can handle this as well
         obj_name = mat.group(2)
         name_str = 'DW_AT_name	("{}")'.format(obj_name)
         dwarf_obj = dwarf_obj.replace(mat.group(), name_str)
@@ -201,14 +201,31 @@ def get_func_obj_start_addr(obj_str: str):
         return low_pc
 
 
+def get_func_obj_range(obj_str: str):
+    if mat := re.search(r"DW_AT_low_pc	\(([0-9A-Fa-fxX]+)\)", obj_str):
+        low_pc = int(mat.group(1), 16)
+        if mat := re.search(r"DW_AT_high_pc	\(([0-9A-Fa-fxX]+)\)", obj_str):
+            high_pc = int(mat.group(1), 16)
+            return low_pc, high_pc
+    return -1, -1
+
+
 def traverse_dwarf_subprogs(dwarf_path: str):
     func_objs = []
     param_dict = dict()
     func_names_list = []
 
     func_start_addr_set = set()  # filter func_objs, remove functions with the same start address (only keep one)
+    func_range_set = set()  # filter func_objs, remove functions inside other functions  (inlined)
+
+    def in_func_ranges(l_pc: int, h_pc: int):
+        for low, high in func_range_set:
+            if low <= l_pc < h_pc <= high:
+                return True
+        return False
 
     current_func = dict()
+    current_func_valid = False
     with open(dwarf_path, 'r') as f:
         dwarf_txt = f.read()
         dwarf_objs = dwarf_txt.split('\n\n')
@@ -223,14 +240,19 @@ def traverse_dwarf_subprogs(dwarf_path: str):
             obj_addr, obj_type, obj_dict = parse_dwarf_obj(obj)
             if obj_type == "DW_TAG_subprogram":
                 start_addr = get_func_obj_start_addr(obj)
-                if start_addr and start_addr not in func_start_addr_set:
+                low_pc, high_pc = get_func_obj_range(obj)
+                current_func_valid = False
+                if start_addr and start_addr not in func_start_addr_set and not in_func_ranges(low_pc, high_pc):
                     func_objs.append((obj_addr, obj_dict))
                     func_names_list.append(obj_dict["DW_AT_name"])
+                    current_func_valid = True
+
                     func_start_addr_set.add(start_addr)
+                    func_range_set.add((low_pc, high_pc))
                 current_func = obj_dict
             elif obj_type == "DW_TAG_formal_parameter":
 
-                if "DW_AT_type" not in obj:  # or "DW_AT_low_pc" not in current_func:
+                if "DW_AT_type" not in obj or not current_func_valid:  # or "DW_AT_low_pc" not in current_func:
                     continue  # skip parameter in inlined function
 
                 if current_func["DW_AT_name"] in param_dict.keys():
@@ -240,15 +262,31 @@ def traverse_dwarf_subprogs(dwarf_path: str):
     return func_objs, param_dict, func_names_list
 
 
-def get_wasm_globs(c_src_path: str, emcc_opt_level='-O2'):
-    wasm_path, js_path, wasm_dwarf_txt_path = emscripten_dwarf(c_src_path, opt_level=emcc_opt_level)
+def get_wasm_globs(c_src_path: str, emcc_opt_level='-O2', need_compile=True):
+    if need_compile:
+        wasm_path, js_path, wasm_dwarf_txt_path = emscripten_dwarf(c_src_path, opt_level=emcc_opt_level)
+    else:
+        assert c_src_path.endswith('.c')
+        wasm_path = c_src_path[:-2] + '.wasm'
+        js_path = c_src_path[:-2] + '.js'
+        wasm_dwarf_txt_path = wasm_path + '.dwarf'
+
     wasm_glob_objs, wasm_name_list = traverse_dwarf(wasm_dwarf_txt_path)
     return wasm_glob_objs
 
 
-def collect_glob_vars(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
-    out_path, clang_dwarf_txt_path = clang_dwarf(c_src_path, opt_level=clang_opt_level)
-    wasm_path, js_path, wasm_dwarf_txt_path = emscripten_dwarf(c_src_path, opt_level=emcc_opt_level)
+def collect_glob_vars(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2', need_compile=True):
+    if need_compile:
+        out_path, clang_dwarf_txt_path = clang_dwarf(c_src_path, opt_level=clang_opt_level)
+        wasm_path, js_path, wasm_dwarf_txt_path = emscripten_dwarf(c_src_path, opt_level=emcc_opt_level)
+    else:
+        assert c_src_path.endswith('.c')
+        out_path = c_src_path[:-2] + '.out'
+        clang_dwarf_txt_path = out_path + '.dwarf'
+
+        wasm_path = c_src_path[:-2] + '.wasm'
+        js_path = c_src_path[:-2] + '.js'
+        wasm_dwarf_txt_path = wasm_path + '.dwarf'
 
     wasm_glob_objs, wasm_name_list = traverse_dwarf(wasm_dwarf_txt_path)
     clang_glob_objs, clang_name_list = traverse_dwarf(clang_dwarf_txt_path)
@@ -280,9 +318,18 @@ def collect_glob_vars(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O
     return new_wasm_globs, clang_glob_objs
 
 
-def collect_funcs(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
-    out_path, clang_dwarf_txt_path = clang_dwarf(c_src_path, opt_level=clang_opt_level)
-    wasm_path, js_path, wasm_dwarf_txt_path = emscripten_dwarf(c_src_path, opt_level=emcc_opt_level)
+def collect_funcs(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2', need_compile=True):
+    if need_compile:
+        out_path, clang_dwarf_txt_path = clang_dwarf(c_src_path, opt_level=clang_opt_level)
+        wasm_path, js_path, wasm_dwarf_txt_path = emscripten_dwarf(c_src_path, opt_level=emcc_opt_level)
+    else:
+        assert c_src_path.endswith('.c')
+        out_path = c_src_path[:-2] + '.out'
+        clang_dwarf_txt_path = out_path + '.dwarf'
+
+        wasm_path = c_src_path[:-2] + '.wasm'
+        js_path = c_src_path[:-2] + '.js'
+        wasm_dwarf_txt_path = wasm_path + '.dwarf'
 
     wasm_func_objs, wasm_param_dict, wasm_func_names_list = traverse_dwarf_subprogs(wasm_dwarf_txt_path)
     clang_func_objs, clang_param_dict, clang_func_names_list = traverse_dwarf_subprogs(clang_dwarf_txt_path)

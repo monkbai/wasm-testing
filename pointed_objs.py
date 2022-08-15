@@ -87,10 +87,10 @@ def get_str_mapping(clang_elf_path: str, wat_path: str):
 # Get global variable mappings
 # ==================
 
-def get_glob_mapping(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
+def get_glob_mapping(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2', need_compile=True):
     globs_mapping = []
 
-    wasm_globs, clang_globs = profile.collect_glob_vars(c_src_path, clang_opt_level, emcc_opt_level)
+    wasm_globs, clang_globs = profile.collect_glob_vars(c_src_path, clang_opt_level, emcc_opt_level, need_compile)
 
     wasm_globs_dict = dict()
     trace_consistency.clear_glob_array_dict()
@@ -130,18 +130,18 @@ def get_glob_mapping(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2
 # ==================
 
 
-def get_pointed_objs_mapping(c_path: str, elf_path: str, wat_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
+def get_pointed_objs_mapping(c_path: str, elf_path: str, wat_path: str, clang_opt_level='-O0', emcc_opt_level='-O2', need_compile=True):
     """ this function aims to remove overlapped global variables """
-    mapping_dict, wasm_objs_dict, clang_objs_dict = _get_pointed_objs_mapping(c_path, elf_path, wat_path, clang_opt_level, emcc_opt_level)
+    mapping_dict, wasm_objs_dict, clang_objs_dict = _get_pointed_objs_mapping(c_path, elf_path, wat_path, clang_opt_level, emcc_opt_level, need_compile)
     lcs.FuncItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
     lcs.PtrItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
 
-    mapping_dict, wasm_objs_dict, clang_objs_dict = _get_pointed_objs_mapping(c_path, elf_path, wat_path, clang_opt_level, emcc_opt_level)
+    mapping_dict, wasm_objs_dict, clang_objs_dict = _get_pointed_objs_mapping(c_path, elf_path, wat_path, clang_opt_level, emcc_opt_level, need_compile)
     return mapping_dict, wasm_objs_dict, clang_objs_dict
 
 
-def _get_pointed_objs_mapping(c_path: str, elf_path: str, wat_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
-    globs_mapping, wasm_globs_dict, clang_globs_dict = get_glob_mapping(c_path, clang_opt_level, emcc_opt_level)
+def _get_pointed_objs_mapping(c_path: str, elf_path: str, wat_path: str, clang_opt_level='-O0', emcc_opt_level='-O2', need_compile=True):
+    globs_mapping, wasm_globs_dict, clang_globs_dict = get_glob_mapping(c_path, clang_opt_level, emcc_opt_level, need_compile)
     str_mapping = get_str_mapping(elf_path, wat_path)
 
     wasm_objs_dict = dict()

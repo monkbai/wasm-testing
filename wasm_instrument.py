@@ -471,12 +471,23 @@ def instrument(wasm_path: str, glob_objs: list, func_objs: list, param_dict: dic
 
     wat_txt = wasm2wat(wasm_path)
 
+    iprintf_flag = True
+    if "func $iprintf" in wat_txt:
+        pass
+    elif "func $printf" in wat_txt:
+        iprintf_flag = False
+    else:
+        assert False, "what if we cannot find printf"
+
     new_wat_txt = instrument_glob_write(wat_txt, stdout_addr, func_objs, opt_level)
 
     new_wat_txt = instrument_func_call(new_wat_txt, func_objs, param_dict)
 
     # if opt_level.strip().endswith('O0'):
     #     new_wat_txt = new_wat_txt.replace('$iprintf', '$printf')  # iprintf and printf are different
+
+    if not iprintf_flag:
+        new_wat_txt = new_wat_txt.replace("$iprintf", "$printf")
 
     wat2wasm(new_wasm_path, new_wat_txt)
 
