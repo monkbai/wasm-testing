@@ -219,6 +219,8 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
 
             elif l.startswith('W: '):  # globals write
                 write_addr = int(l.split(':')[1].strip(), 16)
+                if write_addr == 0x7d8:
+                    print("debug")
                 write_size = int(l.split(':')[2].strip())
                 idx += 1
                 l = lines[idx]
@@ -248,7 +250,7 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
 
                 if not step_size:  # ignore complex struct
                     pass
-                elif len(glob_name) != 0 and step_size < write_size:
+                elif len(glob_name) != 0 and step_size <= write_size:
                     # handle optimized writes in wasm binary
                     mask = 1
                     for i in range(step_size*8 - 1):
@@ -403,7 +405,7 @@ def generalize_pin_trace(trace_path: str, clang_globs: list, clang_func_objs: li
                             break
 
                     if len(glob_name) != 0 and step_size:
-                        if step_size < write_size:
+                        if step_size <= write_size:
                             while write_size > 0:
                                 glob_name = ''  # find corresponding global name
                                 if write_addr in lcs.PtrItem.clang_objs_dict:
@@ -795,10 +797,10 @@ def main():
     global debug_mode
     # test
     # c_src_path = './missopt_cases/bug_cases/test6_re_re.c'
-    # c_src_path = './tmp.c'
-    c_src_path = "./find_wasm_opt/test0-0.c"
+    c_src_path = './tmp.c'
+    # c_src_path = "./find_wasm_opt/test0-0.c"
     debug_mode = False
-    obj_lists = trace_check(c_src_path, clang_opt_level='-O3', emcc_opt_level='-O3', need_compile=False)
+    obj_lists = trace_check(c_src_path, clang_opt_level='-O3', emcc_opt_level='-O3', need_compile=True)
     utils.obj_to_json(obj_lists, 'test1495_re.gt.json')
 
 
