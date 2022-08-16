@@ -15,6 +15,7 @@ import pin_instrument
 glob_array_dict = dict()
 
 debug_mode = False
+silent_mode= True
 
 
 def clear_glob_array_dict():
@@ -756,7 +757,8 @@ def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2', ne
         status, output = utils.cmd("rm {}".format(os.path.abspath(elf_path)))
         status, output = utils.cmd("rm {}".format(os.path.abspath(wasm_path)))
 
-    print("\nTrace Consistency Checking for {}...".format(c_src_path))
+    if not silent_mode:
+        print("\nTrace Consistency Checking for {}...".format(c_src_path))
     # profile, get dwarf information of global variables and function arguments
     wasm_globs, clang_globs = profile.collect_glob_vars(c_src_path, clang_opt_level, emcc_opt_level, need_compile)
     (wasm_func_objs, wasm_param_dict, wasm_func_names_list), \
@@ -803,10 +805,10 @@ def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2', ne
     func_correct_inconsistent_list = \
         trace_check_func_correct(wasm_func_trace_dict, clang_func_trace_dict, wasm_func_objs, wasm_param_dict)
 
-    # if len(glob_correct_inconsistent_list) > 0 or len(func_correct_inconsistent_list) > 0:
-    print('glob (incorrect):', glob_correct_inconsistent_list)
-    print('func (incorrect):', func_correct_inconsistent_list)
-    # else:
+    if not silent_mode or len(glob_correct_inconsistent_list) > 0 or len(func_correct_inconsistent_list) > 0:
+        print('{} glob (incorrect):'.format(os.path.basename(c_src_path)), glob_correct_inconsistent_list)
+        print('{} func (incorrect):'.format(os.path.basename(c_src_path)), func_correct_inconsistent_list)
+    
     if len(wasm_globs) > 0:
         glob_perf_inconsistent_list = \
             trace_check_glob_perf(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs)
@@ -815,8 +817,9 @@ def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2', ne
     func_perf_inconsistent_list = \
         trace_check_func_perf(wasm_func_trace_dict, clang_func_trace_dict, wasm_func_objs, wasm_param_dict)
 
-    print('glob (performance):', glob_perf_inconsistent_list)
-    print('func (performance):', func_perf_inconsistent_list)
+    if not silent_mode or len(glob_perf_inconsistent_list) > 0 or len(func_perf_inconsistent_list) > 0:
+        print('{} glob (performance):'.format(os.path.basename(c_src_path)), glob_perf_inconsistent_list)
+        print('{} func (performance):'.format(os.path.basename(c_src_path)), func_perf_inconsistent_list)
 
     return glob_correct_inconsistent_list, func_correct_inconsistent_list, glob_perf_inconsistent_list, func_perf_inconsistent_list
 

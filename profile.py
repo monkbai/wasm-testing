@@ -65,6 +65,8 @@ def emscripten_dwarf(c_src_path: str, opt_level='-O2'):
 
     stdout, stderr = utils.cmd_emsdk(config.emcc_dwarf_opt_cmd.format(opt_level, c_src_path, wasm_path, js_path))
     status, output = utils.cmd(config.dwarfdump_cmd.format(wasm_path, dwarf_txt_path))
+    if status:
+        print("Warning: failed to generate WASM code.")
 
     utils.project_dir = tmp_dir
 
@@ -82,6 +84,8 @@ def clang_dwarf(c_src_path: str, opt_level='-O0'):
     utils.project_dir = dir_path
 
     status, output = utils.cmd(config.clang_dwarf_opt_cmd.format(opt_level, c_src_path, out_path))
+    if status:
+        print("Warning: failed to generate x86 code.")
     status, output = utils.cmd(config.dwarfdump_cmd.format(out_path, dwarf_txt_path))
 
     utils.project_dir = tmp_dir
