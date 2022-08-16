@@ -219,6 +219,8 @@ def traverse_dwarf_subprogs(dwarf_path: str):
     func_range_set = set()  # filter func_objs, remove functions inside other functions  (inlined)
 
     def in_func_ranges(l_pc: int, h_pc: int):
+        if l_pc == 0 and h_pc == 0:  # due to optimization passes of wasm-opt
+            return False
         for low, high in func_range_set:
             if low <= l_pc < h_pc <= high:
                 return True
@@ -242,7 +244,7 @@ def traverse_dwarf_subprogs(dwarf_path: str):
                 start_addr = get_func_obj_start_addr(obj)
                 low_pc, high_pc = get_func_obj_range(obj)
                 current_func_valid = False
-                if start_addr and start_addr not in func_start_addr_set and not in_func_ranges(low_pc, high_pc):
+                if start_addr is not None and (start_addr not in func_start_addr_set or start_addr == 0) and not in_func_ranges(low_pc, high_pc):
                     func_objs.append((obj_addr, obj_dict))
                     func_names_list.append(obj_dict["DW_AT_name"])
                     current_func_valid = True

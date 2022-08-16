@@ -45,36 +45,58 @@ class FuncItem:
         FuncItem.wasm_objs_dict = wasm_objs_dict
         FuncItem.clang_objs_dict = clang_objs_dict
 
-    def __init__(self, func_name: str, item_type='P', item_values=[], pointer_flags=[]):
+    def __init__(self, func_name: str, item_type='P', item_values=[], pointer_flags=[], ptr_ret_flag=False):
         # assert item_type == 'R' or len(item_values) == len(pointer_flags) # it is possible for WASM
         self.func_name = func_name
         self.type = item_type
         self.values = item_values
         self.pointer_flags = pointer_flags
+        self.ptr_ret_flag = ptr_ret_flag
 
     def __eq__(self, other):
         if self.type != other.type:
             return False
         if len(self.values) != len(other.values):  # more parameters than defined in dwarf is possible for WASM, due to optimization?
             return False
-        for i in range(len(self.pointer_flags)):
-            assert self.pointer_flags[i] == other.pointer_flags[i]
-
-            if not self.pointer_flags[i]:  # normal int values
-                if self.values[i] != other.values[i]:
+        # return value
+        if self.type == 'R':
+            if not self.ptr_ret_flag:  # normal int values
+                if self.values[0] != other.values[0]:  # TODO: currently only support one return value
                     return False
-            elif self.pointer_flags[i]:  # pointer values
-                if self.values[i] in FuncItem.wasm_objs_dict or self.values[i] in FuncItem.clang_objs_dict:
-                    if other.values[i] in FuncItem.wasm_objs_dict or other.values[i] in FuncItem.clang_objs_dict:
-                        if (self.values[i], other.values[i]) not in FuncItem.mapping_dict:
+            elif self.ptr_ret_flag:  # pointer values
+                if self.values[0] in FuncItem.wasm_objs_dict or self.values[0] in FuncItem.clang_objs_dict:
+                    if other.values[0] in FuncItem.wasm_objs_dict or other.values[0] in FuncItem.clang_objs_dict:
+                        if (self.values[0], other.values[0]) not in FuncItem.mapping_dict:
                             return False  # point to different objs
                     else:
                         return False  # other.values[i] points to unknown obj
-                elif other.values[i] in FuncItem.wasm_objs_dict or other.values[i] in FuncItem.clang_objs_dict:
+                elif other.values[0] in FuncItem.wasm_objs_dict or other.values[0] in FuncItem.clang_objs_dict:
                     return False  # self.values[i] points to unknown obj
                 else:
                     pass  # both point to unknown objs
-        return True
+            return True
+        elif self.type == 'P':
+            # parameters
+            for i in range(len(self.pointer_flags)):
+                assert self.pointer_flags[i] == other.pointer_flags[i]
+
+                if not self.pointer_flags[i]:  # normal int values
+                    if self.values[i] != other.values[i]:
+                        return False
+                elif self.pointer_flags[i]:  # pointer values
+                    if self.values[i] in FuncItem.wasm_objs_dict or self.values[i] in FuncItem.clang_objs_dict:
+                        if other.values[i] in FuncItem.wasm_objs_dict or other.values[i] in FuncItem.clang_objs_dict:
+                            if (self.values[i], other.values[i]) not in FuncItem.mapping_dict:
+                                return False  # point to different objs
+                        else:
+                            return False  # other.values[i] points to unknown obj
+                    elif other.values[i] in FuncItem.wasm_objs_dict or other.values[i] in FuncItem.clang_objs_dict:
+                        return False  # self.values[i] points to unknown obj
+                    else:
+                        pass  # both point to unknown objs
+            return True
+        else:
+            return False
 
     def values_str(self):
         if len(self.values) == len(self.pointer_flags):

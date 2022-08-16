@@ -219,8 +219,6 @@ def generalize_wasm_trace(trace_path: str, wasm_globs: list, wasm_func_objs: lis
 
             elif l.startswith('W: '):  # globals write
                 write_addr = int(l.split(':')[1].strip(), 16)
-                if write_addr == 0x7d8:
-                    print("debug")
                 write_size = int(l.split(':')[2].strip())
                 idx += 1
                 l = lines[idx]
@@ -479,12 +477,13 @@ def trace_check_glob_correct(wasm_glob_trace_dict: dict, clang_glob_trace_dict: 
             for v in clang_trace_backup:
                 clang_trace.append(lcs.PtrItem(ptr_name=glob_name, ptr_value=v))
 
-        if glob_trace[-1] != clang_trace[-1] and not clang_glob_trace_dict[glob_name][-1][1].startswith("OPT\n"):
-            # TODO: re-consider the compiler optimization that may only update part of the var (e.g., OPT mark)
-            inconsistent_list.append("{}:{}".format(glob_name, glob_trace[-1]))
-            if debug_mode:
-                print('>Glob trace inconsistency founded.')
-                print('\tglob_name: {}, wasm_last_write: {}, clang_last_write: {}'.format(glob_name, glob_trace[-1], clang_trace[-1]))
+        if glob_trace[-1] != clang_trace[-1]:
+            if not (isinstance(glob_trace[-1], int) and clang_glob_trace_dict[glob_name][-1][1].startswith("OPT\n") and (glob_trace[-1] & clang_trace[-1]) == clang_trace[-1]):
+                # TODO: re-consider the compiler optimization that may only update part of the var (e.g., OPT mark)
+                inconsistent_list.append("{}:{}".format(glob_name, glob_trace[-1]))
+                if debug_mode:
+                    print('>Glob trace inconsistency founded.')
+                    print('\tglob_name: {}, wasm_last_write: {}, clang_last_write: {}'.format(glob_name, glob_trace[-1], clang_trace[-1]))
 
     # Case 2: missing global writes
     if case2_check:
@@ -550,8 +549,8 @@ def trace_check_glob_perf(wasm_glob_trace_dict: dict, clang_glob_trace_dict: dic
             if 'OPT\n' in it[1]:
                 opt_write_flag = True
                 break
-        if opt_write_flag:
-            continue
+        # if opt_write_flag:  # do not skip, try to catch this
+        #     continue
 
         clang_trace = [v[0] for v in clang_trace]  # remove auxiliary information
         if '*' in obj["DW_AT_type"]:
@@ -567,16 +566,21 @@ def trace_check_glob_perf(wasm_glob_trace_dict: dict, clang_glob_trace_dict: dic
                 clang_trace.append(lcs.PtrItem(ptr_name=glob_name, ptr_value=v))
 
         lcs_trace, lcs_trace2 = lcs.lcs(clang_trace, glob_trace)
-        if len(glob_trace) != len(lcs_trace):
+        if (not opt_write_flag and len(glob_trace) != len(lcs_trace)) or (opt_write_flag and len(clang_trace) < len(glob_trace)):
+            if not opt_write_flag:
+                perf_distance = len(glob_trace) - len(lcs_trace)
+            else:
+                perf_distance = len(glob_trace) - len(clang_trace)  # TODO: this could be more accurate
+
             # find the first inconsistent index of glob_trace element
             # the element value is used for better reducing
             for idx in range(len(glob_trace)):
                 if idx not in lcs_trace:
                     break
             if '*' in obj["DW_AT_type"]:
-                inconsistent_list.append("{}:{}:{}".format(glob_name, 'ptr', len(glob_trace) - len(lcs_trace)))
+                inconsistent_list.append("{}:{}:{}".format(glob_name, 'ptr', perf_distance))
             else:
-                inconsistent_list.append("{}:{}:{}".format(glob_name, glob_trace[idx], len(glob_trace) - len(lcs_trace)))
+                inconsistent_list.append("{}:{}:{}".format(glob_name, glob_trace[idx], perf_distance))
             if debug_mode:
                 if glob_trace[-1] == clang_trace[-1]:
                     print('>Glob trace performance inconsistency founded.')
@@ -600,6 +604,7 @@ def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: 
         if func_name == 'main':
             continue  # ignore main function, as the return value is not captured by pin tool (tracer)
 
+        # What is the parameter type of this function?
         func_key = '("{}")'.format(func_name)
         pointer_flags = []
         if func_key in wasm_param_dict:
@@ -612,6 +617,15 @@ def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: 
                     pointer_flags.append(True)
                 else:
                     pointer_flags.append(False)
+        # And what is the return type of this function?
+        ptr_ret_flag = False
+        for addr, obj in wasm_func_objs:
+            if func_key == obj["DW_AT_name"] and "DW_AT_type" in obj:
+                ret_type = obj["DW_AT_type"]
+                if '*' in ret_type or '[' in ret_type:
+                    ptr_ret_flag = True
+                elif 'int' not in ret_type and 'short' not in ret_type and 'char' not in ret_type and 'long' not in ret_type:
+                    ptr_ret_flag = True
 
         if func_name not in clang_func_trace_dict:
             continue  # the function is inlined in optimized clang binary
@@ -623,12 +637,12 @@ def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: 
         func_item_trace = []
         for item in func_trace:
             # item[2] -> auxiliary information
-            func_item_trace.append(lcs.FuncItem(func_name=func_name, item_type=item[0], item_values=item[1], pointer_flags=pointer_flags))
+            func_item_trace.append(lcs.FuncItem(func_name=func_name, item_type=item[0], item_values=item[1], pointer_flags=pointer_flags, ptr_ret_flag=ptr_ret_flag))
 
         clang_item_trace = []
         for item in clang_trace:
             # item[2] -> auxiliary information
-            clang_item_trace.append(lcs.FuncItem(func_name=func_name, item_type=item[0], item_values=item[1], pointer_flags=pointer_flags))
+            clang_item_trace.append(lcs.FuncItem(func_name=func_name, item_type=item[0], item_values=item[1], pointer_flags=pointer_flags, ptr_ret_flag=ptr_ret_flag))
 
         clang_idx = 0
         for i in range(len(func_item_trace)):
@@ -657,6 +671,7 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
         if func_name == 'main':
             continue  # ignore main function, as the return value is not captured by pin tool (tracer)
 
+        # What is the parameter type of this function?
         func_key = '("{}")'.format(func_name)
         pointer_flags = []
         if func_key in wasm_param_dict:
@@ -669,12 +684,21 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
                     pointer_flags.append(True)
                 else:
                     pointer_flags.append(False)
+        # And what is the return type of this function?
+        ptr_ret_flag = False
+        for addr, obj in wasm_func_objs:
+            if func_key == obj["DW_AT_name"] and "DW_AT_type" in obj:
+                ret_type = obj["DW_AT_type"]
+                if '*' in ret_type or '[' in ret_type:
+                    ptr_ret_flag = True
+                elif 'int' not in ret_type and 'short' not in ret_type and 'char' not in ret_type and 'long' not in ret_type:
+                    ptr_ret_flag = True
 
         func_item_trace = []
         for item in func_trace:
             # item[2] -> auxiliary information
             func_item_trace.append(
-                lcs.FuncItem(func_name=func_name, item_type=item[0], item_values=item[1], pointer_flags=pointer_flags))
+                lcs.FuncItem(func_name=func_name, item_type=item[0], item_values=item[1], pointer_flags=pointer_flags, ptr_ret_flag=ptr_ret_flag))
         # what if this function
         if func_name not in clang_func_trace_dict:
             # TODO: is missing inline opportunity a problem?
@@ -693,7 +717,7 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
         clang_item_trace = []
         for item in clang_trace:
             # item[2] -> auxiliary information
-            clang_item_trace.append(lcs.FuncItem(func_name=func_name, item_type=item[0], item_values=item[1], pointer_flags=pointer_flags))
+            clang_item_trace.append(lcs.FuncItem(func_name=func_name, item_type=item[0], item_values=item[1], pointer_flags=pointer_flags, ptr_ret_flag=ptr_ret_flag))
 
         lcs_item_trace, lcs_item_trace2 = lcs.lcs(clang_item_trace, func_item_trace)
         if len(lcs_item_trace) != len(func_item_trace):
