@@ -478,7 +478,11 @@ def trace_check_glob_correct(wasm_glob_trace_dict: dict, clang_glob_trace_dict: 
                 clang_trace.append(lcs.PtrItem(ptr_name=glob_name, ptr_value=v))
 
         if glob_trace[-1] != clang_trace[-1]:
-            if not (isinstance(glob_trace[-1], int) and clang_glob_trace_dict[glob_name][-1][1].startswith("OPT\n") and (glob_trace[-1] & clang_trace[-1]) == clang_trace[-1]):
+            if not \
+                    (isinstance(glob_trace[-1], int) and
+                     clang_glob_trace_dict[glob_name][-1][1].startswith("OPT\n") and
+                     ((glob_trace[-1] & clang_trace[-1]) == clang_trace[-1]) or clang_trace[-1] == 1):
+                # (clang_trace[-1] == 1 and "OPT\n") is a kind of special optimization (codegen pattern?) used by clang
                 # TODO: re-consider the compiler optimization that may only update part of the var (e.g., OPT mark)
                 inconsistent_list.append("{}:{}".format(glob_name, glob_trace[-1]))
                 if debug_mode:

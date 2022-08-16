@@ -73,7 +73,7 @@ def trace_test(process_idx: int):
                 break  # exclude FPs caused by Undefined Behaviors
         print('test{}-{}.c generated'.format(process_idx, tmp_file_idx))
 
-        wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-O3')
+        wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-O4')
 
         # lightweight checking
         output1, status = utils.run_single_prog(elf_path)
@@ -95,6 +95,27 @@ def trace_test(process_idx: int):
     # print("Possible case: test{}-{}".format(process_idx, tmp_file_idx))
 
 
+def single_test(c_path: str):
+    elf_path = c_path[:-2] + '.out'
+    js_path = c_path[:-2] + '.js'
+    wasm_path = c_path[:-2] + '.wasm'
+
+    wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_path, opt_level='-O0')
+    elf_path, dwarf_path = profile.clang_dwarf(c_path, opt_level='-O3')
+
+    output1, status = utils.run_single_prog(elf_path)
+    output2, status = utils.run_single_prog("node {}".format(js_path))
+
+    wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-O4')
+
+    output1, status = utils.run_single_prog(elf_path)
+    output2, status = utils.run_single_prog("node {}".format(js_path))
+
+    glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(c_path, clang_opt_level='-O3',
+                                                                                     emcc_opt_level='-O3',
+                                                                                     need_compile=False)
+
+
 def worker1(sleep_time: int):
     time.sleep(sleep_time * 1)
     try:
@@ -114,6 +135,10 @@ def worker2(sleep_time: int):
 if __name__ == '__main__':
     # simple_test(0)
     # trace_test(0)
+    # single_test("./test15-4498.c")
+    # single_test("./test6-1611.c")
+    single_test("./test13-54.c")
+    exit(0)
 
     if len(sys.argv) == 2 and sys.argv[1] == '1':
         with Pool(16) as p:
