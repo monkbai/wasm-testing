@@ -89,7 +89,7 @@ def trace_test(process_idx: int):
             if len(glob_perf) != 0 or len(func_perf) != 0:
                 print("Possible under-opt case: test{}-{}".format(process_idx, tmp_file_idx))
                 status, output = utils.cmd("mv ./find_wasm_opt/test{}-{}.* ./find_wasm_opt/under_opt".format(process_idx, tmp_file_idx))
-        elif (len(glob_correct) != 0 or len(func_correct) != 0) and outpu1 != output2:
+        elif (len(glob_correct) != 0 or len(func_correct) != 0) and output1 != output2:
             print("Possible func-bug case: test{}-{}".format(process_idx, tmp_file_idx))
             status, output = utils.cmd("mv ./find_wasm_opt/test{}-{}.* ./find_wasm_opt/func_bug".format(process_idx, tmp_file_idx))
         else:
