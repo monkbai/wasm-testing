@@ -31,11 +31,14 @@ def simple_test(process_idx: int):
             if output1 == output2:
                 break  # exclude FPs caused by Undefined Behaviors
 
-        wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-O3')
+        wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-O4')
 
         # lightweight checking
         output1, status = utils.run_single_prog(elf_path)
         output2, status = utils.run_single_prog("node {}".format(js_path))
+
+        # debug 
+        # input("continue?")
 
         # heavyweight checking
         # glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(c_path, clang_opt_level='-O3', emcc_opt_level='-O3', need_compile=False)
@@ -71,9 +74,9 @@ def trace_test(process_idx: int):
             output2, status = utils.run_single_prog("node {}".format(js_path))
             if output1 == output2:
                 break  # exclude FPs caused by Undefined Behaviors
-        print('test{}-{}.c generated'.format(process_idx, tmp_file_idx))
+        # print('test{}-{}.c generated'.format(process_idx, tmp_file_idx))
 
-        wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-O4')
+        wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-O3')
 
         # lightweight checking
         output1, status = utils.run_single_prog(elf_path)
@@ -86,9 +89,12 @@ def trace_test(process_idx: int):
             if len(glob_perf) != 0 or len(func_perf) != 0:
                 print("Possible under-opt case: test{}-{}".format(process_idx, tmp_file_idx))
                 status, output = utils.cmd("mv ./find_wasm_opt/test{}-{}.* ./find_wasm_opt/under_opt".format(process_idx, tmp_file_idx))
-        else:
+        elif (len(glob_correct) != 0 or len(func_correct) != 0) and outpu1 != output2:
             print("Possible func-bug case: test{}-{}".format(process_idx, tmp_file_idx))
             status, output = utils.cmd("mv ./find_wasm_opt/test{}-{}.* ./find_wasm_opt/func_bug".format(process_idx, tmp_file_idx))
+        else:
+            print("Possible func-FP case: test{}-{}".format(process_idx, tmp_file_idx))
+            status, output = utils.cmd("mv ./find_wasm_opt/test{}-{}.* ./find_wasm_opt/func_FPs".format(process_idx, tmp_file_idx))
 
         status, output = utils.cmd("rm ./find_wasm_opt/test{}-{}.*".format(process_idx, tmp_file_idx))
 
@@ -137,8 +143,8 @@ if __name__ == '__main__':
     # trace_test(0)
     # single_test("./test15-4498.c")
     # single_test("./test6-1611.c")
-    single_test("./test13-54.c")
-    exit(0)
+    # single_test("./test13-54.c")
+    # exit(0)
 
     if len(sys.argv) == 2 and sys.argv[1] == '1':
         with Pool(16) as p:
