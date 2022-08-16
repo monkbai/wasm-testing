@@ -134,10 +134,10 @@ def worker2(sleep_time: int):
 
 if __name__ == '__main__':
     # simple_test(0)
-    # trace_test(0)
+    trace_test(0)
     # single_test("./test15-4498.c")
     # single_test("./test6-1611.c")
-    single_test("./test13-54.c")
+    single_test("./test13-3.c")
     exit(0)
 
     if len(sys.argv) == 2 and sys.argv[1] == '1':
