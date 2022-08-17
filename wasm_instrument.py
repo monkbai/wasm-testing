@@ -39,7 +39,9 @@ def wat2wasm(wasm_path: str, wat_txt: str):
 
     status, output = utils.cmd(config.wat2wasm_cmd.format(wat_path, wasm_path))
     if status != 0:
-        assert False, "Error: failed to recompile wat file\n"+output
+        # assert False, "Error: failed to recompile wat file\n"+output
+        # assert will stop all processes
+        print("Error: failed to recompile wat file {}".format(os.path.basename(wat_path)))
 
     utils.project_dir = tmp_dir
 

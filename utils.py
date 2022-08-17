@@ -156,7 +156,9 @@ def crash_checking(c_path: str, opt_level='-O0'):
 
 def get_one_csmith(c_path: str):
     csmith_generate(c_path)  # with size limit
-    while not udf_checking(c_path) or not crash_checking(c_path, opt_level='-O0'):  # undefined behaviour check
+    # while not udf_checking(c_path) or not crash_checking(c_path, opt_level='-O0'):  # undefined behaviour check
+    #     csmith_generate(c_path)
+    while not crash_checking(c_path, opt_level='-O0'):  # undefined behaviour check
         csmith_generate(c_path)
 
 
