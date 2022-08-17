@@ -25,7 +25,7 @@ wasm_vfiprintf = """  (func $vfiprintf (type {}) (param i32 i32 i32) (result i32
 wasm_iprintf = """(func $iprintf (type {}) (param i32 i32) (result i32)
     (local i32)
     global.get $__stack_pointer
-    i32.const 64
+    i32.const 8192
     i32.sub
     local.tee 2
     global.set $__stack_pointer
@@ -38,7 +38,7 @@ wasm_iprintf = """(func $iprintf (type {}) (param i32 i32) (result i32)
     call $vfiprintf
     local.set 1
     local.get 2
-    i32.const 64
+    i32.const 8192
     i32.add
     global.set $__stack_pointer
     local.get 1)
@@ -48,7 +48,7 @@ wasm_myprint_i32w = """
   (func $myprint_i32w (type {}) (param i32 i32)
     (local i32)
     global.get $__stack_pointer
-    i32.const 64
+    i32.const 8192
     i32.sub
     local.tee 2
     global.set $__stack_pointer  ;; lift stack pointer
@@ -72,7 +72,7 @@ wasm_myprint_i32w = """
     drop
     
     local.get 2
-    i32.const 64  ;; restore stack pointer
+    i32.const 8192  ;; restore stack pointer
     i32.add
     global.set $__stack_pointer)
 """
@@ -81,7 +81,7 @@ wasm_myprint_i32v = """
   (func $myprint_i32v (type {}) (param i32)
     (local i32)
     global.get $__stack_pointer
-    i32.const 64
+    i32.const 8192
     i32.sub
     local.tee 1
     global.set $__stack_pointer  ;; lift stack pointer
@@ -96,7 +96,7 @@ wasm_myprint_i32v = """
     drop
     
     local.get 1
-    i32.const 64  ;; restore stack pointer
+    i32.const 8192  ;; restore stack pointer
     i32.add
     global.set $__stack_pointer)
 """
@@ -105,7 +105,7 @@ wasm_myprint_i32p = """
   (func $myprint_i32p (type {}) (param i32)
     (local i32)
     global.get $__stack_pointer
-    i32.const 64
+    i32.const 8192
     i32.sub
     local.tee 1
     global.set $__stack_pointer  ;; lift stack pointer
@@ -120,7 +120,7 @@ wasm_myprint_i32p = """
     drop
 
     local.get 1
-    i32.const 64  ;; restore stack pointer
+    i32.const 8192  ;; restore stack pointer
     i32.add
     global.set $__stack_pointer)
 """
@@ -129,7 +129,7 @@ wasm_myprint_i32id = """
   (func $myprint_i32id (type {}) (param i32)
     (local i32)
     global.get $__stack_pointer
-    i32.const 64
+    i32.const 8192
     i32.sub
     local.tee 1
     global.set $__stack_pointer  ;; lift stack pointer
@@ -144,7 +144,7 @@ wasm_myprint_i32id = """
     drop
 
     local.get 1
-    i32.const 64  ;; restore stack pointer
+    i32.const 8192  ;; restore stack pointer
     i32.add
     global.set $__stack_pointer)
 """
@@ -153,7 +153,7 @@ wasm_myprint_i64p = """
   (func $myprint_i64p (type {}) (param i64)
     (local i32)
     global.get $__stack_pointer
-    i32.const 64
+    i32.const 8192
     i32.sub
     local.tee 1
     global.set $__stack_pointer  ;; lift stack pointer
@@ -168,7 +168,7 @@ wasm_myprint_i64p = """
     drop
     
     local.get 1
-    i32.const 64  ;; restore stack pointer
+    i32.const 8192  ;; restore stack pointer
     i32.add
     global.set $__stack_pointer)
 """
@@ -177,7 +177,7 @@ wasm_myprint_i64v = """
   (func $myprint_i64v (type {}) (param i64)
     (local i32)
     global.get $__stack_pointer
-    i32.const 64
+    i32.const 8192
     i32.sub
     local.tee 1
     global.set $__stack_pointer  ;; lift stack pointer
@@ -192,7 +192,7 @@ wasm_myprint_i64v = """
     drop
 
     local.get 1
-    i32.const 64  ;; restore stack pointer
+    i32.const 8192  ;; restore stack pointer
     i32.add
     global.set $__stack_pointer)
 """
@@ -201,7 +201,7 @@ wasm_myprint_i32r = """
   (func $myprint_i32r (type {}) (param i32) (result i32)
     (local i32)
     global.get $__stack_pointer
-    i32.const 64
+    i32.const 8192
     i32.sub
     local.tee 1
     global.set $__stack_pointer  ;; lift stack pointer
@@ -216,7 +216,7 @@ wasm_myprint_i32r = """
     drop
 
     local.get 1
-    i32.const 64  ;; restore stack pointer
+    i32.const 8192  ;; restore stack pointer
     i32.add
     global.set $__stack_pointer
     
@@ -227,7 +227,7 @@ wasm_myprint_i64r = """
   (func $myprint_i64r (type {}) (param i64) (result i64)
     (local i32)
     global.get $__stack_pointer
-    i32.const 64
+    i32.const 8192
     i32.sub
     local.tee 1
     global.set $__stack_pointer  ;; lift stack pointer
@@ -242,7 +242,7 @@ wasm_myprint_i64r = """
     drop
 
     local.get 1
-    i32.const 64  ;; restore stack pointer
+    i32.const 8192  ;; restore stack pointer
     i32.add
     global.set $__stack_pointer
 
