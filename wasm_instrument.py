@@ -1,6 +1,8 @@
 import os
 import re
 import copy
+import subprocess
+from threading import Timer
 
 import utils
 import config
@@ -495,6 +497,7 @@ def instrument(wasm_path: str, glob_objs: list, func_objs: list, param_dict: dic
 
 
 def run_wasm(js_path: str):
+    """ Deprecated """
     js_path = os.path.abspath(js_path)
     output_path = js_path + '.trace'
     dir_path = os.path.dirname(js_path)
@@ -507,6 +510,23 @@ def run_wasm(js_path: str):
     utils.project_dir = tmp_dir
 
     return output_path
+
+
+def run_wasm_timeout(js_path: str):
+    """ Add timeout, bug in wasm-opt will cause loop without exit """
+    js_path = os.path.abspath(js_path)
+    output_path = js_path + '.trace'
+    dir_path = os.path.dirname(js_path)
+
+    timeout_sec = 3  # a normal testcase should end in 3 seconds
+    proc = subprocess.Popen(config.nodejs_cmd.format(js_path, output_path), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    timer = Timer(timeout_sec, proc.kill)
+    try:
+        timer.start()
+        stdout, stderr = proc.communicate()
+    finally:
+        timer.cancel()
+    return output_path, proc.returncode
 
 
 def main():

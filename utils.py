@@ -50,7 +50,7 @@ timeout_sec = 3
 
 def run_single_prog(prog_path):
     global timeout_sec
-    proc = subprocess.Popen(prog_path, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.Popen("timeout {} {}".format(timeout_sec, prog_path), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     timer = Timer(timeout_sec, proc.kill)
     try:
         timer.start()

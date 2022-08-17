@@ -787,7 +787,11 @@ def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2', ne
     # get trace
     wasm_instrument.instrument(wasm_path, wasm_globs_all, wasm_func_objs, wasm_param_dict, wasm_path, opt_level=emcc_opt_level)
     clang_raw_trace_path = pin_instrument.instrument(c_src_path, clang_globs, clang_func_objs, clang_param_dict, elf_path)
-    wasm_raw_trace_path = wasm_instrument.run_wasm(js_path)
+    wasm_raw_trace_path, js_status = wasm_instrument.run_wasm_timeout(js_path)  # wasm_instrument.run_wasm(js_path)
+    if js_status:  # non-exit loop in optimized wasm code, special handler
+        glob_correct_inconsistent_list = ["timeout"]
+        print('{} glob (incorrect):'.format(os.path.basename(c_src_path)), glob_correct_inconsistent_list)
+        return glob_correct_inconsistent_list, [], [], []
 
     # trace generalization
     wasm_glob_trace_dict, wasm_func_trace_dict = generalize_wasm_trace(wasm_raw_trace_path,

@@ -112,7 +112,7 @@ def single_test(c_path: str):
     output1, status = utils.run_single_prog(elf_path)
     output2, status = utils.run_single_prog("node {}".format(js_path))
 
-    wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-O4')
+    wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-O3')
 
     output1, status = utils.run_single_prog(elf_path)
     output2, status = utils.run_single_prog("node {}".format(js_path))
@@ -143,8 +143,8 @@ if __name__ == '__main__':
     # trace_test(0)
     # single_test("./test15-4498.c")
     # single_test("./test6-1611.c")
-    # single_test("./test13-3.c")
-    # exit(0)
+    single_test("./test11-585.c")
+    exit(0)
 
     if len(sys.argv) == 2 and sys.argv[1] == '1':
         with Pool(16) as p:
