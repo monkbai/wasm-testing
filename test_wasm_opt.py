@@ -14,7 +14,7 @@ def simple_test(process_idx: int):
         Mainly focus on the functionality errors
     """
     file_idx = 0
-    while True:
+    while file_idx < 10000:
         tmp_file_idx = file_idx
         file_idx += 1
         # print(tmp_file_idx)
@@ -68,7 +68,7 @@ def trace_test(process_idx: int):
     """
     print("Start testing...process id {}".format(process_idx))
     file_idx = 0
-    while True:
+    while file_idx < 10000:
         tmp_file_idx = file_idx
         file_idx += 1
         # print(tmp_file_idx)
@@ -153,8 +153,8 @@ if __name__ == '__main__':
     # trace_test(0)
     # single_test("./test15-4498.c")
     # single_test("./test6-1611.c")
-    single_test("./test7-5233.c")
-    exit(0)
+    # single_test("./test7-5233.c")
+    # exit(0)
 
     if len(sys.argv) == 2 and sys.argv[1] == '1':
         with Pool(16) as p:
