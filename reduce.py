@@ -24,12 +24,55 @@ def generate_test_sh(test_sh_path: str, c_file: str, gt_file: str, check_type="f
     return test_sh_path
 
 
+def generate_crash_test_sh(test_sh_path: str, c_file: str, check_type="crash"):
+    f_path = os.path.realpath(__file__)
+    pwd = os.path.dirname(f_path)
+
+    c_file = os.path.basename(c_file)
+    test_sh_path = os.path.abspath(test_sh_path)
+    sh_txt = "#!/bin/bash\npython3 {}/interest.py {} {}\n".format(pwd, c_file, check_type)
+    with open(test_sh_path, 'w') as f:
+        f.write(sh_txt)
+    os.chmod(test_sh_path, 0o777)
+
+    return test_sh_path
+
+
 def generate_ground_truth(c_src_path: str, gt_path: str, clang_opt_level='-O0', emcc_opt_level='-O2'):
     obj_lists = trace_consistency.trace_check(c_src_path, clang_opt_level, emcc_opt_level)
     utils.obj_to_json(obj_lists, gt_path)
 
 
 creduce_path = config.creduce_path
+
+
+def reduce_crash(c_path: str, reduced_path: str, check_type="crash", clang_opt_level='-O0', emcc_opt_level='-O0'):
+    reduced_path = os.path.abspath(reduced_path)
+    if os.path.exists(reduced_path):
+        # print('"{}" already exists.'.format(reduced_path))
+        return
+
+    reduced_wasm = reduced_path[:reduced_path.rfind('.c')] + '.wasm'
+    reduced_js = reduced_path[:reduced_path.rfind('.c')] + '.js'
+    reduced_out = reduced_path[:reduced_path.rfind('.c')] + '.out'
+    test_sh_path = reduced_path[:reduced_path.rfind('.c')] + '.sh'
+
+    c_path = os.path.abspath(c_path)
+    status, output = utils.cmd('cp {} {}'.format(c_path, reduced_path))
+
+    generate_crash_test_sh(test_sh_path, reduced_path, check_type)
+
+    print('start reducing {}...'.format(c_path))
+    # move to the target directory
+    base_dir = os.path.dirname(reduced_path)
+    utils.project_dir, base_dir = base_dir, utils.project_dir
+    # print(creduce_path + ' ./{} '.format(os.path.basename(test_sh_path)) + os.path.basename(reduced_path))
+    status, output = utils.cmd(creduce_path + ' ./{} '.format(os.path.basename(test_sh_path)) + os.path.basename(reduced_path))
+    if status != 0:
+        print('failed to reduce {}:\n'.format(c_path), output)
+    # restore utils project_dir
+    utils.project_dir, base_dir = base_dir, utils.project_dir
+    print("{} reduced.".format(c_path))
 
 
 def reduce_c(c_path: str, reduced_path: str, check_type="functionality", clang_opt_level='-O0', emcc_opt_level='-O2'):
@@ -96,7 +139,8 @@ def worker(sleep_time: int):
 
 
 if __name__ == '__main__':
-    reduce_c('./testcases/func_bug_clang/test1072.c', './testcases/func_bug_clang/test1072_re.c', check_type="functionality", clang_opt_level='-O0', emcc_opt_level='-O2')
+    # reduce_c('./testcases/func_bug_clang/test1072.c', './testcases/func_bug_clang/test1072_re.c', check_type="functionality", clang_opt_level='-O0', emcc_opt_level='-O2')
+    reduce_crash('./test8-78.c', './test8-78_re.c', check_type="crash", clang_opt_level='-O0', emcc_opt_level='-O0')
     # reduce()
     # reduce_opt()
     exit(0)

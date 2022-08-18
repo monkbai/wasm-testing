@@ -60,6 +60,18 @@ def run_single_prog(prog_path):
     return stdout.decode('utf-8'), proc.returncode
 
 
+def run_single_prog_err(prog_path):
+    global timeout_sec
+    proc = subprocess.Popen("timeout {} {}".format(timeout_sec, prog_path), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    timer = Timer(timeout_sec, proc.kill)
+    try:
+        timer.start()
+        stdout, stderr = proc.communicate()
+    finally:
+        timer.cancel()
+    return stdout.decode('utf-8'), stderr.decode('utf-8')
+
+
 def csmith_generate(c_path: str, csmithcmd=config.csmith_cmd):
     c_path = os.path.abspath(c_path)
     elf_path = c_path[:c_path.rfind('.')] + '.out'

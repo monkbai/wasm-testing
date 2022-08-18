@@ -116,20 +116,18 @@ def single_test(c_path: str):
     js_path = c_path[:-2] + '.js'
     wasm_path = c_path[:-2] + '.wasm'
 
-    wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_path, opt_level='-O1')
-    elf_path, dwarf_path = profile.clang_dwarf(c_path, opt_level='-O1')
+    wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_path, opt_level='-O0')
+    elf_path, dwarf_path = profile.clang_dwarf(c_path, opt_level='-O3')
 
     output1, status1 = utils.run_single_prog(elf_path)
     output2, status2 = utils.run_single_prog("node {}".format(js_path))
 
-    wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-all')
+    wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-O4')
 
     output1, status1 = utils.run_single_prog(elf_path)
     output2, status2 = utils.run_single_prog("node {}".format(js_path))
 
-    glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(c_path, clang_opt_level='-O3',
-                                                                                     emcc_opt_level='-O3',
-                                                                                     need_compile=False)
+    glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(c_path, clang_opt_level='-O3', emcc_opt_level='-O3', need_compile=False)
 
 
 def worker1(sleep_time: int):
@@ -148,13 +146,53 @@ def worker2(sleep_time: int):
         pass
 
 
+def test_emi(dir_path="/home/tester/Documents/EMI/DecFuzzer/testcases_emi"):
+    for i in range(200):
+        for j in range(10):
+            c_path = os.path.join(dir_path, 'test{}-{}.c'.format(i, j))
+
+            tmp_out = c_path[:-2] + '.out'
+            tmp_js = c_path[:-2] + '.js'
+            tmp_wasm = c_path[:-2] + '.wasm'
+            utils.cmd("rm {}".format(tmp_out))
+            utils.cmd("rm {}".format(tmp_wasm))
+            utils.cmd("rm {}".format(tmp_js))
+
+            wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_path, opt_level="-O0")
+            elf_path, dwarf_path = profile.clang_dwarf(c_path, opt_level="-O0")
+
+            # check compilation results
+            if not os.path.exists(tmp_out) or not os.path.exists(tmp_js) or not os.path.exists(tmp_wasm):
+                print(c_path)
+                continue
+
+            output1, stderr1 = utils.run_single_prog_err(elf_path)
+            output2, stderr2 = utils.run_single_prog_err("node {}".format(js_path))
+
+            if len(stderr1) > 0 or len(stderr2) > 0 or output1.strip() != output2.strip():
+                f1 = os.path.join(dir_path + '/func_bug_wasm_opt', 'test{}-{}.c'.format(i, j))
+                status, output = utils.cmd("cp {} {}".format(c_path, f1))
+                continue
+
+            # try with wasm-opt and check again
+            wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-O4')
+            # output1, status1 = utils.run_single_prog(elf_path)
+            output2, stderr2 = utils.run_single_prog_err("node {}".format(js_path))
+
+            if len(stderr2) > 0 or output1.strip() != output2.strip():
+                f1 = os.path.join(dir_path + '/func_bug_wasm_opt', 'test{}-{}.c'.format(i, j))
+                status, output = utils.cmd("cp {} {}".format(c_path, f1))
+                continue
+
+
 if __name__ == '__main__':
+    test_emi()
     # simple_test(7)
     # trace_test(0)
     # single_test("./test15-4498.c")
     # single_test("./test6-1611.c")
-    # single_test("./test7-5233.c")
-    # exit(0)
+    single_test("./test11-238.c")
+    exit(0)
 
     if len(sys.argv) == 2 and sys.argv[1] == '1':
         with Pool(16) as p:
