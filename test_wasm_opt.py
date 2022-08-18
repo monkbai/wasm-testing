@@ -163,23 +163,28 @@ def simple_test_yarpgen(process_idx: int):
         status, output = utils.cmd("rm -r ./find_wasm_opt_bug/test{}-{}".format(process_idx, tmp_file_idx))
 
 
-def single_test(c_path: str):
+def single_test(c_path: str, clang_opt="-O3", emcc_opt="-O0", wasm_opt="-O4", run_flag=True):
+    c_path = os.path.abspath(c_path)
     elf_path = c_path[:-2] + '.out'
     js_path = c_path[:-2] + '.js'
     wasm_path = c_path[:-2] + '.wasm'
 
-    wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_path, opt_level='-O0')
-    elf_path, dwarf_path = profile.clang_dwarf(c_path, opt_level='-O3')
+    wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_path, opt_level=emcc_opt)
+    elf_path, dwarf_path = profile.clang_dwarf(c_path, opt_level=clang_opt)
 
-    output1, status1 = utils.run_single_prog(elf_path)
-    output2, status2 = utils.run_single_prog("node {}".format(js_path))
+    if run_flag:
+        output1, status1 = utils.run_single_prog(elf_path)
+        output2, status2 = utils.run_single_prog("node {}".format(js_path))
 
-    wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-O4')
+    wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level=wasm_opt)
 
-    output1, status1 = utils.run_single_prog(elf_path)
-    output2, status2 = utils.run_single_prog("node {}".format(js_path))
+    if run_flag:
+        output1, status1 = utils.run_single_prog(elf_path)
+        output2, status2 = utils.run_single_prog("node {}".format(js_path))
 
-    glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(c_path, clang_opt_level='-O3', emcc_opt_level='-O3', need_compile=False)
+    glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(c_path, clang_opt_level=clang_opt, emcc_opt_level=emcc_opt, need_compile=False)
+
+    return glob_correct, func_correct, glob_perf, func_perf
 
 
 def worker1(sleep_time: int):
@@ -277,12 +282,12 @@ if __name__ == '__main__':
     # test_emi()
     # by_zero_test()
 
-    simple_test_yarpgen(0)
+    # simple_test_yarpgen(0)
     # simple_test(7)
     # trace_test(0)
     # single_test("./test15-4498.c")
     # single_test("./test6-1611.c")
-    # single_test("./test11-238.c")
+    single_test("./test13-3.c")
     # exit(0)
 
     if len(sys.argv) == 2 and sys.argv[1] == '1':

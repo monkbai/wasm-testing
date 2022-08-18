@@ -4,6 +4,7 @@ import os
 import sys
 
 import utils
+import profile
 import trace_consistency
 
 
@@ -33,25 +34,6 @@ def update_ground_truth(gc_list: list, fc_list: list, go_list: list, fo_list: li
     if len(gc_list) > len(glob_corr_list) or len(fc_list) > len(func_corr_list) or \
             len(go_list) > len(glob_perf_list) or len(fo_list) > len(func_perf_list):
         utils.obj_to_json([gc_list, fc_list, go_list, fo_list], gt_json_path)
-    pass
-
-
-def udf_checking(c_path: str):
-    """ Checking for undefined behaviors
-        1. Assigned value is garbage or undefined [clang-analyzer-core.uninitialized.Assign]
-        2. The right operand of '>>' is a garbage value [clang-analyzer-core.UndefinedBinaryOperatorResult]
-        3. The result of the left shift is undefined because the right operand is negative [clang-analyzer-core.UndefinedBinaryOperatorResult]
-        3. warning: more '%' conversions than data arguments [clang-diagnostic-format-insufficient-args]
-    """
-    status, output = utils.cmd("clang-tidy-12 {} -- -I/home/tester/Documents/csmith/runtime".format(c_path))
-    if 'Assigned value is garbage or undefined' in output:
-        exit(-1)
-    elif 'garbage value' in output:
-        exit(-1)
-    # elif 'is undefined' in output:
-    #     exit(-1)
-    elif "more '%' conversions than data arguments" in output:
-        exit(-1)
 
 
 def preserved_keywords(c_path: str, key_list: list):
@@ -63,13 +45,11 @@ def preserved_keywords(c_path: str, key_list: list):
         return True
 
 
-def main(tmp_c: str, interest_type='functionality', clang_opt_level='-O0', emcc_opt_level='-O2'):
+def main(tmp_c: str, interest_type='optimization', clang_opt_level='-O3', emcc_opt_level='-O0', wasm_opt_option="-O3"):
     tmp_c = os.path.abspath(tmp_c)
-    # TODO: what if do not keep <func_1>
-    # with open(tmp_c, 'r') as f:
-    #     if 'func_1' not in f.read():
-    #         exit(-1)  # keep func_1
-    udf_checking(c_path=tmp_c)
+
+    if not utils.udf_checking(c_path=tmp_c):
+        exit(-1)
     if not utils.compile_checking(c_path=tmp_c, opt_level=clang_opt_level):
         exit(-1)
     if not utils.crash_checking(c_path=tmp_c, opt_level=clang_opt_level):
@@ -77,10 +57,18 @@ def main(tmp_c: str, interest_type='functionality', clang_opt_level='-O0', emcc_
     if not preserved_keywords(tmp_c, []):
         exit(-1)
 
+    wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(tmp_c, opt_level=emcc_opt_level)
+    elf_path, dwarf_path = profile.clang_dwarf(tmp_c, opt_level=clang_opt_level)
+
+    # output1, status1 = utils.run_single_prog(elf_path)
+    # output2, status2 = utils.run_single_prog("node {}".format(js_path))
+
+    wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level=wasm_opt_option)
+
     glob_correct_inconsistent_list, \
         func_correct_inconsistent_list, \
         glob_perf_inconsistent_list, \
-        func_perf_inconsistent_list = trace_consistency.trace_check(tmp_c, clang_opt_level, emcc_opt_level)
+        func_perf_inconsistent_list = trace_consistency.trace_check(tmp_c, clang_opt_level, emcc_opt_level, need_compile=False)
 
     if interest_type.startswith('function'):
         if len(glob_correct_inconsistent_list) > 0 or len(func_correct_inconsistent_list) > 0:
@@ -99,6 +87,7 @@ def main(tmp_c: str, interest_type='functionality', clang_opt_level='-O0', emcc_
         if len(glob_perf_inconsistent_list) > 0 or len(func_perf_inconsistent_list) > 0:
             if not list_compare(glob_perf_list, glob_perf_inconsistent_list) or \
                     not list_compare(func_perf_list, func_perf_inconsistent_list):
+                # So we do not need to update ground truth for under-opt issue?
                 exit(-1)
             exit(0)
         else:
@@ -124,13 +113,17 @@ if __name__ == '__main__':
     # main('./debug_cases/test319.c', interest_type='functionality', clang_opt_level='-O2', emcc_opt_level='-O2')
     # main('./tmp.c', interest_type='functionality', clang_opt_level='-O0', emcc_opt_level='-O2')
 
-    if len(sys.argv) == 4:
+    if len(sys.argv) == 7:
         gt_json_path = sys.argv[3]
         get_ground_truth(sys.argv[3])
+        check_type = sys.argv[2]
+        clang_opt = sys.argv[4]
+        emcc_opt = sys.argv[5]
+        wasm_opt = sys.argv[6]
         if sys.argv[2].startswith('function'):
-            main(sys.argv[1])
+            main(sys.argv[1]) # not implemented
         elif sys.argv[2].startswith('optimization'):
-            main(sys.argv[1], sys.argv[2], '-O3', '-O3')
+            main(sys.argv[1], check_type, clang_opt, emcc_opt, wasm_opt)
         else:
             exit(-1)
     else:
