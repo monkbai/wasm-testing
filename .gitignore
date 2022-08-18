@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+# Also, ignore most C source file (testcases)
+*.c
+
 # WebAssembly outputs
 *.wasm
 *.wat

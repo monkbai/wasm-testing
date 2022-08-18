@@ -14,7 +14,7 @@ def simple_test(process_idx: int):
         Mainly focus on the functionality errors
     """
     file_idx = 0
-    while file_idx < 10000:
+    while file_idx < 2000:
         tmp_file_idx = file_idx
         file_idx += 1
         # print(tmp_file_idx)
@@ -26,15 +26,15 @@ def simple_test(process_idx: int):
             wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_path, opt_level='-O0')
             elf_path, dwarf_path = profile.clang_dwarf(c_path, opt_level='-O0')
 
-            output1, status1 = utils.run_single_prog(elf_path)
-            output2, status2 = utils.run_single_prog("node {}".format(js_path))
-            if status1 or status2:
+            output1, stderr1 = utils.run_single_prog_err(elf_path)
+            output2, stderr2 = utils.run_single_prog_err("node {}".format(js_path))
+            if (len(stderr1) > 0 or len(stderr2) > 0) and "by zero" not in stderr2:
                 break  # one of the program did not return normally
 
             if output1 == output2:
                 break  # exclude FPs caused by Undefined Behaviors
 
-        wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-O4')
+        wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-all')
 
         # lightweight checking
         output1, status1 = utils.run_single_prog(elf_path)
@@ -185,14 +185,45 @@ def test_emi(dir_path="/home/tester/Documents/EMI/DecFuzzer/testcases_emi"):
                 continue
 
 
+def by_zero_test(dir_path="./find_wasm_opt_bug"):
+    for process_idx in range(16):
+        file_idx = 0
+        while file_idx < 10000:
+            tmp_file_idx = file_idx
+            file_idx += 1
+            # print(tmp_file_idx)
+            c_path = os.path.join('./find_wasm_opt_bug', 'test{}-{}.c'.format(process_idx, tmp_file_idx))
+            
+            if not os.path.exists(c_path):
+                continue
+
+            wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_path, opt_level='-O0')
+            elf_path, dwarf_path = profile.clang_dwarf(c_path, opt_level='-O0')
+
+            output1, stderr1 = utils.run_single_prog_err(elf_path)
+            output2, stderr2 = utils.run_single_prog_err("node {}".format(js_path))
+            
+            if stderr1 or stderr2:
+                if "by zero" in stderr2:
+                    err_info = stderr2[stderr2.find("RuntimeError"):]
+                    err_info = err_info[:err_info.find('\n')]
+                    print(err_info + " " + c_path)
+                    status, output = utils.cmd("rm ./find_wasm_opt_bug/test{}-{}.*".format(process_idx, tmp_file_idx))
+            elif output1 == output2:
+                status, output = utils.cmd("rm ./find_wasm_opt_bug/test{}-{}.*".format(process_idx, tmp_file_idx))
+            
+
+
 if __name__ == '__main__':
-    test_emi()
+    # test_emi()
+    # by_zero_test()
+    
     # simple_test(7)
     # trace_test(0)
     # single_test("./test15-4498.c")
     # single_test("./test6-1611.c")
-    single_test("./test11-238.c")
-    exit(0)
+    # single_test("./test11-238.c")
+    # exit(0)
 
     if len(sys.argv) == 2 and sys.argv[1] == '1':
         with Pool(16) as p:
