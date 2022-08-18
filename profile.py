@@ -53,12 +53,18 @@ def reg_global_var(line: str):
 # turn to DWARF info
 # deprecate above functions
 def emscripten_dwarf(c_src_path: str, opt_level='-O2'):
-    c_src_path = os.path.abspath(c_src_path)
-    dir_path = os.path.dirname(c_src_path)
-    assert c_src_path.endswith('.c')
-    wasm_path = c_src_path[:-2] + '.wasm'
-    js_path = c_src_path[:-2] + '.js'
-    dwarf_txt_path = wasm_path + '.dwarf'
+    if c_src_path.endswith('.c'):
+        c_src_path = os.path.abspath(c_src_path)
+        dir_path = os.path.dirname(c_src_path)
+        wasm_path = c_src_path[:-2] + '.wasm'
+        js_path = c_src_path[:-2] + '.js'
+        dwarf_txt_path = wasm_path + '.dwarf'
+    else:
+        files = c_src_path.split(' ')
+        dir_path = os.path.dirname(files[0])
+        wasm_path = os.path.join(dir_path, "tmp.wasm")
+        js_path = os.path.join(dir_path, "tmp.js")
+        dwarf_txt_path = os.path.join(dir_path, "tmp.wasm.dwarf")
 
     tmp_dir = utils.project_dir
     utils.project_dir = dir_path
@@ -74,11 +80,16 @@ def emscripten_dwarf(c_src_path: str, opt_level='-O2'):
 
 
 def clang_dwarf(c_src_path: str, opt_level='-O0'):
-    c_src_path = os.path.abspath(c_src_path)
-    dir_path = os.path.dirname(c_src_path)
-    assert c_src_path.endswith('.c')
-    out_path = c_src_path[:-2] + '.out'
-    dwarf_txt_path = out_path + '.dwarf'
+    if c_src_path.endswith('.c'):
+        c_src_path = os.path.abspath(c_src_path)
+        dir_path = os.path.dirname(c_src_path)
+        out_path = c_src_path[:-2] + '.out'
+        dwarf_txt_path = out_path + '.dwarf'
+    else:
+        files = c_src_path.split(' ')
+        dir_path = os.path.dirname(files[0])
+        out_path = os.path.join(dir_path, "tmp.out")
+        dwarf_txt_path = os.path.join(dir_path, "tmp.out.dwarf")
 
     tmp_dir = utils.project_dir
     utils.project_dir = dir_path

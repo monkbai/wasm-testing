@@ -97,6 +97,13 @@ def csmith_generate(c_path: str, csmithcmd=config.csmith_cmd):
     status, output = cmd("rm {}".format(elf_path))
 
 
+def yarpgen_generate(out_dir: str):
+    out_dir = os.path.abspath(out_dir)
+    status, output = cmd(config.yarpgen_cmd.format(out_dir))
+    if status != 0:
+        print("Warning: failed to generate program with Yarpgen.")
+
+
 def wasm2wat(wasm_path: str):
     global project_dir
 

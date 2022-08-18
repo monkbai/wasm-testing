@@ -111,6 +111,54 @@ def trace_test(process_idx: int):
     # print("Possible case: test{}-{}".format(process_idx, tmp_file_idx))
 
 
+def simple_test_yarpgen(process_idx: int):
+    """ Clang O0 vs. Emcc O0 + wasm-opt O3
+        Mainly focus on the functionality errors
+    """
+    file_idx = 0
+    while file_idx < 1000:
+        tmp_file_idx = file_idx
+        file_idx += 1
+        # print(tmp_file_idx)
+        test_dir = os.path.join('./find_wasm_opt_bug', 'test{}-{}'.format(process_idx, tmp_file_idx))
+        test_dir = os.path.abspath(test_dir)
+        if os.path.exists(test_dir):
+            status, output = utils.cmd("rm -r {}".format(test_dir))
+        status, output = utils.cmd("mkdir {}".format(test_dir))
+
+        utils.yarpgen_generate(test_dir)
+        driver_path = os.path.join(test_dir, "driver.cpp")
+        func_path = os.path.join(test_dir, "func.cpp")
+        # init_path = os.path.join(test_dir, "init.h")
+        c_path = "{} {}".format(driver_path, func_path)
+        wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_path, opt_level='-O0')
+        elf_path, dwarf_path = profile.clang_dwarf(c_path, opt_level='-O0')
+
+        output1, stderr1 = utils.run_single_prog_err(elf_path)
+        output2, stderr2 = utils.run_single_prog_err("node {}".format(js_path))
+        if (len(stderr1) > 0 or len(stderr2) > 0) and "by zero" not in stderr2:
+            print("Possible case: test{}-{}".format(process_idx, tmp_file_idx))
+            continue
+        if output1 != output2:
+            print("Possible case: test{}-{}".format(process_idx, tmp_file_idx))
+            continue
+
+        wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-O3')
+
+        # lightweight checking
+        output1, status1 = utils.run_single_prog(elf_path)
+        output2, status2 = utils.run_single_prog("node {}".format(js_path))
+
+        if status1 or status2:
+            print("Possible case: test{}-{}".format(process_idx, tmp_file_idx))
+            continue
+        elif output1 != output2:
+            print("Possible case: test{}-{}".format(process_idx, tmp_file_idx))
+            continue
+        else:
+            status, output = utils.cmd("rm -r ./find_wasm_opt_bug/test{}-{}.*".format(process_idx, tmp_file_idx))
+
+
 def single_test(c_path: str):
     elf_path = c_path[:-2] + '.out'
     js_path = c_path[:-2] + '.js'
@@ -142,6 +190,14 @@ def worker2(sleep_time: int):
     time.sleep(sleep_time * 1)
     try:
         trace_test(sleep_time)
+    except Exception as e:
+        pass
+
+
+def worker3(sleep_time: int):
+    time.sleep(sleep_time * 1)
+    try:
+        simple_test_yarpgen(sleep_time)
     except Exception as e:
         pass
 
@@ -211,13 +267,13 @@ def by_zero_test(dir_path="./find_wasm_opt_bug"):
                     status, output = utils.cmd("rm ./find_wasm_opt_bug/test{}-{}.*".format(process_idx, tmp_file_idx))
             elif output1 == output2:
                 status, output = utils.cmd("rm ./find_wasm_opt_bug/test{}-{}.*".format(process_idx, tmp_file_idx))
-            
 
 
 if __name__ == '__main__':
     # test_emi()
     # by_zero_test()
-    
+
+    simple_test_yarpgen(0)
     # simple_test(7)
     # trace_test(0)
     # single_test("./test15-4498.c")
@@ -231,3 +287,6 @@ if __name__ == '__main__':
     elif len(sys.argv) == 2 and sys.argv[1] == '2':
         with Pool(16) as p:
             p.starmap(worker2, [(i,) for i in range(16)])
+    elif len(sys.argv) == 2 and sys.argv[1] == '3':
+        with Pool(16) as p:
+            p.starmap(worker3, [(i,) for i in range(16)])
