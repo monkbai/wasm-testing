@@ -150,9 +150,9 @@ def add_data_str3(func_sec: str, func_objs: list):
 
 
 def add_utility_funcs(type_sec: str, type_ids: list, data_offsets: list, stdout_addr: int, opt_level='-O2'):
-    if opt_level.endswith('O0'):
-        type_sec += wasm_code.wasm_vfiprintf.format(type_ids[7])
-        type_sec += wasm_code.wasm_iprintf.format(type_ids[6], stdout_addr)
+    # if opt_level.endswith('O0'):
+    #     type_sec += wasm_code.wasm_vfiprintf.format(type_ids[7])
+    #     type_sec += wasm_code.wasm_iprintf.format(type_ids[6], stdout_addr)
     # print functions
     type_sec += wasm_code.wasm_myprint_i32w.format(type_ids[0], data_offsets[0], data_offsets[1])
     type_sec += wasm_code.wasm_myprint_i32v.format(type_ids[1], data_offsets[2])
