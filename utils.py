@@ -99,7 +99,29 @@ def csmith_generate(c_path: str, csmithcmd=config.csmith_cmd):
 
 def yarpgen_generate(out_dir: str):
     out_dir = os.path.abspath(out_dir)
-    status, output = cmd(config.yarpgen_cmd.format(out_dir))
+    
+    while True:
+        status, output = cmd(config.yarpgen_cmd.format(out_dir))
+        assert status == 0
+
+        # avoid huge test case, which consumes lots of memory
+        file_size = os.path.getsize(os.path.join(out_dir, "func.c"))
+        if file_size >= 1024 * 100:  # TODO: size limit 100KB
+            continue
+
+        elf_path = os.path.join(out_dir, 'tmp.out')
+        driver_path = os.path.join(out_dir, 'driver.c')
+        func_path = os.path.join(out_dir, 'func.c')
+        c_path = "{} {}".format(driver_path, func_path)
+        status, output = cmd(config.yarpgen_compile_cmd.format(c_path, elf_path))
+        if status != 0:
+            continue  # if cannot be compiled, re-generate a new source code
+
+        output, status = run_single_prog('timeout 3 ' + elf_path)
+        if status != 0:
+            continue
+
+        break
     if status != 0:
         print("Warning: failed to generate program with Yarpgen.")
 

@@ -116,7 +116,7 @@ def simple_test_yarpgen(process_idx: int):
         Mainly focus on the functionality errors
     """
     file_idx = 0
-    while file_idx < 1000:
+    while file_idx < 10000:
         tmp_file_idx = file_idx
         file_idx += 1
         # print(tmp_file_idx)
@@ -127,36 +127,40 @@ def simple_test_yarpgen(process_idx: int):
         status, output = utils.cmd("mkdir {}".format(test_dir))
 
         utils.yarpgen_generate(test_dir)
-        driver_path = os.path.join(test_dir, "driver.cpp")
-        func_path = os.path.join(test_dir, "func.cpp")
+        driver_path = os.path.join(test_dir, "driver.c")
+        func_path = os.path.join(test_dir, "func.c")
         # init_path = os.path.join(test_dir, "init.h")
         c_path = "{} {}".format(driver_path, func_path)
         wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_path, opt_level='-O0')
         elf_path, dwarf_path = profile.clang_dwarf(c_path, opt_level='-O0')
 
-        output1, stderr1 = utils.run_single_prog_err(elf_path)
-        output2, stderr2 = utils.run_single_prog_err("node {}".format(js_path))
-        if (len(stderr1) > 0 or len(stderr2) > 0) and "by zero" not in stderr2:
-            print("Possible case: test{}-{}".format(process_idx, tmp_file_idx))
-            continue
-        if output1 != output2:
-            print("Possible case: test{}-{}".format(process_idx, tmp_file_idx))
-            continue
+        if os.path.exists(wasm_path):
+            output1, stderr1 = utils.run_single_prog_err(elf_path)
+            output2, stderr2 = utils.run_single_prog_err("node {}".format(js_path))
+            if (len(stderr1) > 0 or len(stderr2) > 0) and "by zero" not in stderr2:
+                print("Possible case: test{}-{}".format(process_idx, tmp_file_idx))
+                continue
+            if output1 != output2:
+                print("Possible case: test{}-{}".format(process_idx, tmp_file_idx))
+                continue
 
-        wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-O3')
+            wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-O3')
 
-        # lightweight checking
-        output1, status1 = utils.run_single_prog(elf_path)
-        output2, status2 = utils.run_single_prog("node {}".format(js_path))
+            # lightweight checking
+            output1, status1 = utils.run_single_prog(elf_path)
+            output2, status2 = utils.run_single_prog("node {}".format(js_path))
 
-        if status1 or status2:
-            print("Possible case: test{}-{}".format(process_idx, tmp_file_idx))
-            continue
-        elif output1 != output2:
-            print("Possible case: test{}-{}".format(process_idx, tmp_file_idx))
-            continue
-        else:
-            status, output = utils.cmd("rm -r ./find_wasm_opt_bug/test{}-{}.*".format(process_idx, tmp_file_idx))
+            if status1 or status2:
+                print("Possible case: test{}-{}".format(process_idx, tmp_file_idx))
+                continue
+            elif output1 != output2:
+                print("Possible case: test{}-{}".format(process_idx, tmp_file_idx))
+                continue
+        
+        # print(output1)
+        # print(output2)
+        # print("rm -r ./find_wasm_opt_bug/test{}-{}".format(process_idx, tmp_file_idx))
+        status, output = utils.cmd("rm -r ./find_wasm_opt_bug/test{}-{}".format(process_idx, tmp_file_idx))
 
 
 def single_test(c_path: str):

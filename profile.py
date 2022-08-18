@@ -53,7 +53,7 @@ def reg_global_var(line: str):
 # turn to DWARF info
 # deprecate above functions
 def emscripten_dwarf(c_src_path: str, opt_level='-O2'):
-    if c_src_path.endswith('.c'):
+    if c_src_path.endswith('.c') and c_src_path.count(".c") == 1:
         c_src_path = os.path.abspath(c_src_path)
         dir_path = os.path.dirname(c_src_path)
         wasm_path = c_src_path[:-2] + '.wasm'
@@ -71,8 +71,10 @@ def emscripten_dwarf(c_src_path: str, opt_level='-O2'):
 
     stdout, stderr = utils.cmd_emsdk(config.emcc_dwarf_opt_cmd.format(opt_level, c_src_path, wasm_path, js_path))
     status, output = utils.cmd(config.dwarfdump_cmd.format(wasm_path, dwarf_txt_path))
-    if status:
-        print("Warning: failed to generate WASM code.")
+    stderr = stderr.decode('utf-8')
+    if status and "wasm-ld: error: initial memory too small" not in stderr:
+        print("Warning: failed to generate WASM code. {}".format(wasm_path))
+        print(stderr)
 
     utils.project_dir = tmp_dir
 
@@ -80,7 +82,7 @@ def emscripten_dwarf(c_src_path: str, opt_level='-O2'):
 
 
 def clang_dwarf(c_src_path: str, opt_level='-O0'):
-    if c_src_path.endswith('.c'):
+    if c_src_path.endswith('.c') and c_src_path.count(".c") == 1:
         c_src_path = os.path.abspath(c_src_path)
         dir_path = os.path.dirname(c_src_path)
         out_path = c_src_path[:-2] + '.out'
