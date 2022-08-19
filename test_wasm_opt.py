@@ -287,7 +287,7 @@ if __name__ == '__main__':
     # trace_test(0)
     # single_test("./test15-4498.c")
     # single_test("./test6-1611.c")
-    single_test("./test13-3.c")
+    single_test("./test13-3_re.c")
     # exit(0)
 
     if len(sys.argv) == 2 and sys.argv[1] == '1':

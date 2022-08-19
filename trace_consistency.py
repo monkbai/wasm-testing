@@ -726,12 +726,14 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
 
         lcs_item_trace, lcs_item_trace2 = lcs.lcs(clang_item_trace, func_item_trace)
         if len(lcs_item_trace) != len(func_item_trace):
+            perf_distance = len(func_item_trace) - len(lcs_item_trace)
+
             # find the first inconsistent index of glob_trace element
             # the element value is used for better reducing
             for idx in range(len(func_item_trace)):
                 if idx not in lcs_item_trace:
                     break
-            inconsistent_list.append("{}:{}".format(func_name, func_item_trace[idx].values_str()))
+            inconsistent_list.append("{}:{}:{}".format(func_name, func_item_trace[idx].values_str(), perf_distance))
             if debug_mode:
                 print('>Func trace inconsistency founded.')
                 print('\tfunc_name: {},'.format(func_name), end=' ')
@@ -742,7 +744,7 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
     return inconsistent_list
 
 
-def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2', need_compile=True):
+def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2', need_compile=True, need_info=False):
     # clean
     c_src_path = os.path.abspath(c_src_path)
     assert c_src_path.endswith('.c')
@@ -825,7 +827,10 @@ def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2', ne
         print('{} glob (performance):'.format(os.path.basename(c_src_path)), glob_perf_inconsistent_list)
         print('{} func (performance):'.format(os.path.basename(c_src_path)), func_perf_inconsistent_list)
 
-    return glob_correct_inconsistent_list, func_correct_inconsistent_list, glob_perf_inconsistent_list, func_perf_inconsistent_list
+    if need_info:
+        return glob_correct_inconsistent_list, func_correct_inconsistent_list, glob_perf_inconsistent_list, func_perf_inconsistent_list, ((wasm_globs, clang_globs), (wasm_func_objs, clang_func_objs))
+    else:
+        return glob_correct_inconsistent_list, func_correct_inconsistent_list, glob_perf_inconsistent_list, func_perf_inconsistent_list
 
 
 def main():

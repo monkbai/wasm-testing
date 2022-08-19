@@ -45,6 +45,21 @@ def preserved_keywords(c_path: str, key_list: list):
         return True
 
 
+def violate_binary_info_check(binary_info: tuple, func_perf_inconsistent_list: list):
+    violation_flag = False
+    for func_item in func_perf_inconsistent_list:
+        if func_item.count(":") == 1:  # missing inline opportunity
+            func_name = func_item[:func_item.find(":")]
+            # this function should not exist in the clang binary
+            for obj_addr, func_obj in binary_info[1][1]:
+                if func_obj["DW_AT_name"].strip("()").strip('"') == func_name:
+                    violation_flag = True
+                    break
+        if violation_flag:
+            break
+    return violation_flag
+
+
 def main(tmp_c: str, interest_type='optimization', clang_opt_level='-O3', emcc_opt_level='-O0', wasm_opt_option="-O3"):
     tmp_c = os.path.abspath(tmp_c)
 
@@ -68,7 +83,8 @@ def main(tmp_c: str, interest_type='optimization', clang_opt_level='-O3', emcc_o
     glob_correct_inconsistent_list, \
         func_correct_inconsistent_list, \
         glob_perf_inconsistent_list, \
-        func_perf_inconsistent_list = trace_consistency.trace_check(tmp_c, clang_opt_level, emcc_opt_level, need_compile=False)
+        func_perf_inconsistent_list, \
+        binary_info = trace_consistency.trace_check(tmp_c, clang_opt_level, emcc_opt_level, need_compile=False, need_info=True)
 
     if interest_type.startswith('function'):
         if len(glob_correct_inconsistent_list) > 0 or len(func_correct_inconsistent_list) > 0:
@@ -87,8 +103,12 @@ def main(tmp_c: str, interest_type='optimization', clang_opt_level='-O3', emcc_o
         if len(glob_perf_inconsistent_list) > 0 or len(func_perf_inconsistent_list) > 0:
             if not list_compare(glob_perf_list, glob_perf_inconsistent_list) or \
                     not list_compare(func_perf_list, func_perf_inconsistent_list):
-                # So we do not need to update ground truth for under-opt issue?
                 exit(-1)
+            # is inlined function in clang binary really inlined? check it
+            # some functions are not inlined, but just not called
+            if violate_binary_info_check(binary_info, func_perf_inconsistent_list):
+                exit(-1)
+            # So we do not need to update ground truth for under-opt issue?
             exit(0)
         else:
             exit(-1)
@@ -112,6 +132,7 @@ if __name__ == '__main__':
     # get_ground_truth('test319.consis.json')
     # main('./debug_cases/test319.c', interest_type='functionality', clang_opt_level='-O2', emcc_opt_level='-O2')
     # main('./tmp.c', interest_type='functionality', clang_opt_level='-O0', emcc_opt_level='-O2')
+    # sys.argv = ["/home/tester/Documents/WebAssembly/wasm-compiler-testing/interest_wasmopt.py", "test13-3_re.c", "optimization", "/home/tester/Documents/WebAssembly/wasm-compiler-testing/test13-3_re.gt.json", "-O3", "-O0", "-O3"]
 
     if len(sys.argv) == 7:
         gt_json_path = sys.argv[3]
@@ -121,7 +142,7 @@ if __name__ == '__main__':
         emcc_opt = sys.argv[5]
         wasm_opt = sys.argv[6]
         if sys.argv[2].startswith('function'):
-            main(sys.argv[1]) # not implemented
+            main(sys.argv[1])  # not implemented
         elif sys.argv[2].startswith('optimization'):
             main(sys.argv[1], check_type, clang_opt, emcc_opt, wasm_opt)
         else:
