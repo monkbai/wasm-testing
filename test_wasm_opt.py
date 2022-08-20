@@ -163,7 +163,7 @@ def simple_test_yarpgen(process_idx: int):
         status, output = utils.cmd("rm -r ./find_wasm_opt_bug/test{}-{}".format(process_idx, tmp_file_idx))
 
 
-def single_test(c_path: str, clang_opt="-O3", emcc_opt="-O0", wasm_opt="-O4", run_flag=True):
+def single_test(c_path: str, clang_opt="-O3", emcc_opt="-O0", wasm_opt="-O3", run_flag=True):
     c_path = os.path.abspath(c_path)
     elf_path = c_path[:-2] + '.out'
     js_path = c_path[:-2] + '.js'
@@ -286,8 +286,9 @@ if __name__ == '__main__':
     # simple_test(7)
     # trace_test(0)
     # single_test("./test15-4498.c")
-    # single_test("./test6-1611.c")
-    single_test("./test13-3_re.c")
+    single_test("./test11-9985.c")
+    single_test("./test0-9996.c")
+    # single_test("./test13-3_re.c")
     # exit(0)
 
     if len(sys.argv) == 2 and sys.argv[1] == '1':

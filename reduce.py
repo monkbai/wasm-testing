@@ -152,8 +152,7 @@ def reduce_wasmopt(c_path: str, reduced_path: str, check_type="crash", clang_opt
     base_dir = os.path.dirname(reduced_path)
     utils.project_dir, base_dir = base_dir, utils.project_dir
     # print(creduce_path + ' ./{} '.format(os.path.basename(test_sh_path)) + os.path.basename(reduced_path))
-    status, output = utils.cmd(
-        creduce_path + ' ./{} '.format(os.path.basename(test_sh_path)) + os.path.basename(reduced_path))
+    status, output = utils.cmd(creduce_path + ' ./{} '.format(os.path.basename(test_sh_path)) + os.path.basename(reduced_path))
     if status != 0:
         print('failed to reduce {}:\n'.format(c_path), output)
     # restore utils project_dir
@@ -194,7 +193,10 @@ def worker(sleep_time: int):
 if __name__ == '__main__':
     # reduce_c('./testcases/func_bug_clang/test1072.c', './testcases/func_bug_clang/test1072_re.c', check_type="functionality", clang_opt_level='-O0', emcc_opt_level='-O2')
     # reduce_crash('./test8-78.c', './test8-78_re.c', check_type="crash", clang_opt_level='-O0', emcc_opt_level='-O0')
-    reduce_wasmopt('./test13-3.c', './test13-3_re.c', check_type="optimization", clang_opt_level='-O3', emcc_opt_level='-O0', wasm_opt_level='-O3')
+
+    # reduce_wasmopt('./test13-3.c', './test13-3_re.c', check_type="optimization", clang_opt_level='-O3', emcc_opt_level='-O0', wasm_opt_level='-O3')
+    reduce_wasmopt('./test11-9985.c', './test11-9985_re.c', check_type="optimization", clang_opt_level='-O3', emcc_opt_level='-O0', wasm_opt_level='-O3')
+    reduce_wasmopt('./test0-9996.c', './test0-9996_re.c', check_type="optimization", clang_opt_level='-O3', emcc_opt_level='-O0', wasm_opt_level='-O3')
     # reduce()
     # reduce_opt()
     exit(0)

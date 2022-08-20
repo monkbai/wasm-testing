@@ -45,8 +45,20 @@ def preserved_keywords(c_path: str, key_list: list):
         return True
 
 
-def violate_binary_info_check(binary_info: tuple, func_perf_inconsistent_list: list):
+def violate_binary_info_check(binary_info: tuple, glob_perf_inconsistent_list: list, func_perf_inconsistent_list: list):
     violation_flag = False
+    # check if global variable exists in binary but never be written
+    for glob_item in glob_perf_inconsistent_list:
+        if glob_item.count(":") == 0:
+            glob_name = glob_item
+            # never be written, should not exist in binary
+            for obj_addr, glob_obj in binary_info[0][1]:
+                if glob_obj["DW_AT_name"].strip("()").strip('"') == glob_name:
+                    violation_flag = True
+                    break
+        if violation_flag:
+            break
+    # Check if function exists in binary but never be called
     for func_item in func_perf_inconsistent_list:
         if func_item.count(":") == 1:  # missing inline opportunity
             func_name = func_item[:func_item.find(":")]
@@ -106,7 +118,7 @@ def main(tmp_c: str, interest_type='optimization', clang_opt_level='-O3', emcc_o
                 exit(-1)
             # is inlined function in clang binary really inlined? check it
             # some functions are not inlined, but just not called
-            if violate_binary_info_check(binary_info, func_perf_inconsistent_list):
+            if violate_binary_info_check(binary_info, glob_perf_inconsistent_list, func_perf_inconsistent_list):
                 exit(-1)
             # So we do not need to update ground truth for under-opt issue?
             exit(0)
@@ -132,7 +144,7 @@ if __name__ == '__main__':
     # get_ground_truth('test319.consis.json')
     # main('./debug_cases/test319.c', interest_type='functionality', clang_opt_level='-O2', emcc_opt_level='-O2')
     # main('./tmp.c', interest_type='functionality', clang_opt_level='-O0', emcc_opt_level='-O2')
-    # sys.argv = ["/home/tester/Documents/WebAssembly/wasm-compiler-testing/interest_wasmopt.py", "test13-3_re.c", "optimization", "/home/tester/Documents/WebAssembly/wasm-compiler-testing/test13-3_re.gt.json", "-O3", "-O0", "-O3"]
+    # sys.argv = ["/home/tester/Documents/WebAssembly/wasm-compiler-testing/interest_wasmopt.py", "test11-9985_re.c", "optimization", "/home/tester/Documents/WebAssembly/wasm-compiler-testing/test11-9985_re.gt.json", "-O3", "-O0", "-O3"]
 
     if len(sys.argv) == 7:
         gt_json_path = sys.argv[3]
