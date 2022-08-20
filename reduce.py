@@ -195,8 +195,8 @@ if __name__ == '__main__':
     # reduce_crash('./test8-78.c', './test8-78_re.c', check_type="crash", clang_opt_level='-O0', emcc_opt_level='-O0')
 
     # reduce_wasmopt('./test13-3.c', './test13-3_re.c', check_type="optimization", clang_opt_level='-O3', emcc_opt_level='-O0', wasm_opt_level='-O3')
-    reduce_wasmopt('./test11-9985.c', './test11-9985_re.c', check_type="optimization", clang_opt_level='-O3', emcc_opt_level='-O0', wasm_opt_level='-O3')
-    reduce_wasmopt('./test0-9996.c', './test0-9996_re.c', check_type="optimization", clang_opt_level='-O3', emcc_opt_level='-O0', wasm_opt_level='-O3')
+    # reduce_wasmopt('./test11-9985.c', './test11-9985_re.c', check_type="optimization", clang_opt_level='-O3', emcc_opt_level='-O0', wasm_opt_level='-O3')
+    reduce_wasmopt('./test1-643.c', './test1-643_re.c', check_type="optimization", clang_opt_level='-O3', emcc_opt_level='-O0', wasm_opt_level='-O3')
     # reduce()
     # reduce_opt()
     exit(0)

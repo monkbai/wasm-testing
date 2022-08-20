@@ -285,10 +285,10 @@ if __name__ == '__main__':
     # simple_test_yarpgen(0)
     # simple_test(7)
     # trace_test(0)
-    # single_test("./test15-4498.c")
-    single_test("./test11-9985.c")
-    single_test("./test0-9996.c")
-    # single_test("./test13-3_re.c")
+    single_test("./test1-643_re.c")
+    # single_test("./test11-9985_re.c")
+    # single_test("./test0-9996.c")
+    single_test("./test13-3_re.c", clang_opt="-O3", emcc_opt="-O0", wasm_opt="-O3", run_flag=True)
     # exit(0)
 
     if len(sys.argv) == 2 and sys.argv[1] == '1':
