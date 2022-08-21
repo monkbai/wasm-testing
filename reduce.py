@@ -128,7 +128,7 @@ def reduce_c(c_path: str, reduced_path: str, check_type="functionality", clang_o
     print("{} reduced.".format(c_path))
 
 
-def reduce_wasmopt(c_path: str, reduced_path: str, check_type="crash", clang_opt_level='-O3', emcc_opt_level='-O0', wasm_opt_level='-O3'):
+def reduce_wasmopt(c_path: str, reduced_path: str, check_type="optimization", clang_opt_level='-O3', emcc_opt_level='-O0', wasm_opt_level='-O3'):
     reduced_path = os.path.abspath(reduced_path)
     if os.path.exists(reduced_path):
         # print('"{}" already exists.'.format(reduced_path))
@@ -181,11 +181,22 @@ def reduce_opt(error_dir='./testcases/under_opt_gcc/'):
             reduce_c(c_path, reduced_path, check_type="optimization", clang_opt_level='-O3', emcc_opt_level='-O3')
 
 
+def reduce_wasmopt_dir(dir_path='./find_wasm_opt/under_opt/0-1000/'):
+    files = os.listdir(dir_path)
+    files.sort()
+    for f in files:
+        c_path = os.path.join(dir_path, f)
+        if f.endswith('.c') and '_re' not in f and not os.path.exists(c_path[:-2]+'_re.c'):
+            reduced_path = c_path[:-2] + '_re.c'
+            reduce_wasmopt(c_path, reduced_path, check_type="optimization", clang_opt_level='-O3', emcc_opt_level='-O0', wasm_opt_level='-O3')
+
+
 def worker(sleep_time: int):
     time.sleep(sleep_time * 5)
     try:
-        reduce()
+        # reduce()
         # reduce_opt()
+        reduce_wasmopt_dir()
     except Exception as e:
         pass
 
@@ -196,10 +207,10 @@ if __name__ == '__main__':
 
     # reduce_wasmopt('./test13-3.c', './test13-3_re.c', check_type="optimization", clang_opt_level='-O3', emcc_opt_level='-O0', wasm_opt_level='-O3')
     # reduce_wasmopt('./test11-9985.c', './test11-9985_re.c', check_type="optimization", clang_opt_level='-O3', emcc_opt_level='-O0', wasm_opt_level='-O3')
-    reduce_wasmopt('./test1-643.c', './test1-643_re.c', check_type="optimization", clang_opt_level='-O3', emcc_opt_level='-O0', wasm_opt_level='-O3')
+    # reduce_wasmopt('./test1-643.c', './test1-643_re.c', check_type="optimization", clang_opt_level='-O3', emcc_opt_level='-O0', wasm_opt_level='-O3')
     # reduce()
     # reduce_opt()
-    exit(0)
+    # exit(0)
 
-    with Pool(8) as p:
-        p.starmap(worker, [(i,) for i in range(8)])
+    with Pool(32) as p:
+        p.starmap(worker, [(i,) for i in range(32)])

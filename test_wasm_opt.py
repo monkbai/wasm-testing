@@ -6,6 +6,7 @@ from multiprocessing import Pool
 
 import utils
 import profile
+import interest_wasmopt
 import trace_consistency
 
 
@@ -278,7 +279,49 @@ def by_zero_test(dir_path="./find_wasm_opt_bug"):
                 status, output = utils.cmd("rm ./find_wasm_opt_bug/test{}-{}.*".format(process_idx, tmp_file_idx))
 
 
+def tmp(process_idx: int):
+    print("Start testing...process id {}".format(process_idx))
+    file_idx = 0
+    mv_count = 0
+    while file_idx < 1000:
+        tmp_file_idx = file_idx
+        file_idx += 1
+        # print(tmp_file_idx)
+        c_path = os.path.join('./find_wasm_opt/under_opt/0-1000', 'test{}-{}.c'.format(process_idx, tmp_file_idx))
+        c_path = os.path.abspath(c_path)
+        
+        if not os.path.exists(c_path):
+            continue
+
+        wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_path, opt_level='-O0')
+        elf_path, dwarf_path = profile.clang_dwarf(c_path, opt_level='-O3')
+        wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-O3')
+
+        if not utils.udf_checking(c_path):
+            mv_count += 1
+            print("mv ./find_wasm_opt/under_opt/0-1000/test{}-{}.* ./find_wasm_opt/under_opt/0-1000/udf/ ".format(process_idx, tmp_file_idx))
+            status, output = utils.cmd("mv ./find_wasm_opt/under_opt/0-1000/test{}-{}.* ./find_wasm_opt/under_opt/0-1000/udf/ ".format(process_idx, tmp_file_idx))
+
+        # glob_correct, func_correct, glob_perf, func_perf, binary_info = trace_consistency.trace_check(c_path, clang_opt_level='-O3', emcc_opt_level='-O3', need_compile=False, need_info=True)
+        # if len(func_perf) == 0 and len(glob_perf) == 1 and ':' not in glob_perf[0]:
+        #     mv_count += 1
+        #     print("mv ./find_wasm_opt/under_opt/0-1000/test{}-{}.* ./find_wasm_opt/under_opt/0-1000/single_glob/ ".format(process_idx, tmp_file_idx))
+        #     status, output = utils.cmd("mv ./find_wasm_opt/under_opt/0-1000/test{}-{}.* ./find_wasm_opt/under_opt/0-1000/single_glob/ ".format(process_idx, tmp_file_idx))
+
+    print("mv_count", mv_count)
+        
+
+def worker_tmp(sleep_time: int):
+    time.sleep(sleep_time * 1)
+    try:
+        tmp(sleep_time)
+    except Exception as e:
+        pass
+
 if __name__ == '__main__':
+    with Pool(16) as p:
+        p.starmap(worker_tmp, [(i,) for i in range(16)])
+    exit(0)
     # test_emi()
     # by_zero_test()
 
