@@ -15,7 +15,7 @@ def simple_test(process_idx: int):
         Mainly focus on the functionality errors
     """
     file_idx = 0
-    while file_idx < 2000:
+    while file_idx < 5000:
         tmp_file_idx = file_idx
         file_idx += 1
         # print(tmp_file_idx)
@@ -35,7 +35,7 @@ def simple_test(process_idx: int):
             if output1 == output2:
                 break  # exclude FPs caused by Undefined Behaviors
 
-        wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-all')
+        wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-O4')
 
         # lightweight checking
         output1, status1 = utils.run_single_prog(elf_path)
@@ -319,19 +319,20 @@ def worker_tmp(sleep_time: int):
         pass
 
 if __name__ == '__main__':
-    with Pool(16) as p:
-        p.starmap(worker_tmp, [(i,) for i in range(16)])
-    exit(0)
+    # with Pool(16) as p:
+    #     p.starmap(worker_tmp, [(i,) for i in range(16)])
+    # exit(0)
+    
     # test_emi()
     # by_zero_test()
 
     # simple_test_yarpgen(0)
     # simple_test(7)
     # trace_test(0)
-    single_test("./test1-643_re.c")
+    # single_test("./test1-643_re.c")
     # single_test("./test11-9985_re.c")
     # single_test("./test0-9996.c")
-    single_test("./test13-3_re.c", clang_opt="-O3", emcc_opt="-O0", wasm_opt="-O3", run_flag=True)
+    # single_test("./test13-3_re.c", clang_opt="-O3", emcc_opt="-O0", wasm_opt="-O3", run_flag=True)
     # exit(0)
 
     if len(sys.argv) == 2 and sys.argv[1] == '1':
