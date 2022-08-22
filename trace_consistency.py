@@ -61,7 +61,7 @@ def get_name_and_addr(glob_obj: dict):
                 step_size = 4
             elif "int16" in obj_type:
                 step_size = 2
-            elif "int8" in obj_type:
+            elif "int8" in obj_type or 'char' in obj_type:
                 step_size = 1
             elif 'char' not in obj_type and 'short' not in obj_type and 'int' not in obj_type and 'long' not in obj_type:
                 return [], (0, 0, 0)  # ignore complex structure/union
