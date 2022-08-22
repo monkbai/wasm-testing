@@ -186,6 +186,7 @@ def add_utility_funcs(type_sec: str, type_ids: list, data_offsets: list, stdout_
 
 def get_return(func_txt: str):
     r_num = 0
+    func_txt = func_txt[:func_txt.find('\n')]
     mat = re.search(r"\(result( [if]\d+)+\)", func_txt)
     if mat:
         r_num = mat.group(1).count(' ')

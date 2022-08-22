@@ -183,6 +183,9 @@ def single_test(c_path: str, clang_opt="-O3", emcc_opt="-O0", wasm_opt="-O3", ru
         output1, status1 = utils.run_single_prog(elf_path)
         output2, status2 = utils.run_single_prog("node {}".format(js_path))
 
+    if run_flag and output1 != output2:
+        print('bug founded!')
+
     glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(c_path, clang_opt_level=clang_opt, emcc_opt_level=emcc_opt, need_compile=False)
 
     return glob_correct, func_correct, glob_perf, func_perf
@@ -318,21 +321,24 @@ def worker_tmp(sleep_time: int):
     except Exception as e:
         pass
 
+
 if __name__ == '__main__':
     # with Pool(16) as p:
     #     p.starmap(worker_tmp, [(i,) for i in range(16)])
     # exit(0)
-    
+
     # test_emi()
     # by_zero_test()
 
     # simple_test_yarpgen(0)
     # simple_test(7)
     # trace_test(0)
+    single_test('./test0-0.c', clang_opt="-O3", emcc_opt="-O0", wasm_opt="-O4", run_flag=True)
+    # single_test('./tmp.c', clang_opt="-O3", emcc_opt="-O0", wasm_opt="-O4", run_flag=True)
     # single_test("./test1-643_re.c")
-    # single_test("./test11-9985_re.c")
+    single_test("./test11-9985_re.c")
     # single_test("./test0-9996.c")
-    # single_test("./test13-3_re.c", clang_opt="-O3", emcc_opt="-O0", wasm_opt="-O3", run_flag=True)
+    single_test("./test13-3_re_re.c", clang_opt="-O3", emcc_opt="-O0", wasm_opt="-O3", run_flag=True)
     # exit(0)
 
     if len(sys.argv) == 2 and sys.argv[1] == '1':
