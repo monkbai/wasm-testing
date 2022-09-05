@@ -35,7 +35,9 @@ def simple_test(process_idx: int):
             if output1 == output2:
                 break  # exclude FPs caused by Undefined Behaviors
 
+        input("before wasm-opt")
         wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-O4')
+        input("after wasm-opt")
 
         # lightweight checking
         output1, status1 = utils.run_single_prog(elf_path)
@@ -331,14 +333,14 @@ if __name__ == '__main__':
     # by_zero_test()
 
     # simple_test_yarpgen(0)
-    # simple_test(7)
+    simple_test(7)
     # trace_test(0)
-    single_test('./test0-0.c', clang_opt="-O3", emcc_opt="-O0", wasm_opt="-O4", run_flag=True)
+    # single_test('./test0-0.c', clang_opt="-O3", emcc_opt="-O0", wasm_opt="-O4", run_flag=True)
     # single_test('./tmp.c', clang_opt="-O3", emcc_opt="-O0", wasm_opt="-O4", run_flag=True)
     # single_test("./test1-643_re.c")
-    single_test("./test11-9985_re.c")
+    # single_test("./test11-9985_re.c")
     # single_test("./test0-9996.c")
-    single_test("./test13-3_re_re.c", clang_opt="-O3", emcc_opt="-O0", wasm_opt="-O3", run_flag=True)
+    # single_test("./test13-3_re_re.c", clang_opt="-O3", emcc_opt="-O0", wasm_opt="-O3", run_flag=True)
     # exit(0)
 
     if len(sys.argv) == 2 and sys.argv[1] == '1':
