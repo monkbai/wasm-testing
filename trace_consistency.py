@@ -838,6 +838,7 @@ def main():
     # test
     # c_src_path = './missopt_cases/bug_cases/test6_re_re.c'
     c_src_path = './tmp.c'
+    c_src_path = './test11-594.c'
     # c_src_path = "./find_wasm_opt/test0-0.c"
     debug_mode = False
     obj_lists = trace_check(c_src_path, clang_opt_level='-O3', emcc_opt_level='-O3', need_compile=True)

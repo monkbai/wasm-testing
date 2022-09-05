@@ -519,7 +519,7 @@ def run_wasm_timeout(js_path: str):
     output_path = js_path + '.trace'
     dir_path = os.path.dirname(js_path)
 
-    timeout_sec = 3  # a normal testcase should end in 3 seconds
+    timeout_sec = 10  # a normal testcase should end in 3 seconds
     proc = subprocess.Popen(config.nodejs_cmd.format(js_path, output_path), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     timer = Timer(timeout_sec, proc.kill)
     try:

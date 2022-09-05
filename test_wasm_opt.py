@@ -18,7 +18,7 @@ def simple_test(process_idx: int):
     while file_idx < 5000:
         tmp_file_idx = file_idx
         file_idx += 1
-        # print(tmp_file_idx)
+        print(tmp_file_idx)
         c_path = os.path.join('./find_wasm_opt_bug', 'test{}-{}.c'.format(process_idx, tmp_file_idx))
         
         while True:
@@ -331,7 +331,7 @@ if __name__ == '__main__':
     # by_zero_test()
 
     # simple_test_yarpgen(0)
-    # simple_test(7)
+    simple_test(7)
     # trace_test(0)
     single_test('./test0-0.c', clang_opt="-O3", emcc_opt="-O0", wasm_opt="-O4", run_flag=True)
     # single_test('./tmp.c', clang_opt="-O3", emcc_opt="-O0", wasm_opt="-O4", run_flag=True)
