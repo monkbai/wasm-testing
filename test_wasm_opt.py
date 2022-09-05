@@ -18,7 +18,7 @@ def simple_test(process_idx: int):
     while file_idx < 5000:
         tmp_file_idx = file_idx
         file_idx += 1
-        # print(tmp_file_idx)
+        print(tmp_file_idx)
         c_path = os.path.join('./find_wasm_opt_bug', 'test{}-{}.c'.format(process_idx, tmp_file_idx))
         
         while True:
