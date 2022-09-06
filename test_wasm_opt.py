@@ -193,6 +193,46 @@ def single_test(c_path: str, clang_opt="-O3", emcc_opt="-O0", wasm_opt="-O3", ru
     return glob_correct, func_correct, glob_perf, func_perf
 
 
+def log_wasmopt_output(dir_path='./find_wasm_opt/under_opt/0-1000/', log_path='./under_opt_0-1000.log'):
+    logf = open(log_path, 'w')
+
+    for process_idx in range(16):
+        file_idx = 0
+        while file_idx < 1000:
+            tmp_file_idx = file_idx
+            file_idx += 1
+            # print(tmp_file_idx)
+            c_path = os.path.join(dir_path, 'test{}-{}_re.c'.format(process_idx, tmp_file_idx))
+            
+            if not os.path.exists(c_path):
+                continue
+            else:
+                print(c_path)
+
+            wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_path, opt_level='-O0')
+            elf_path, dwarf_path = profile.clang_dwarf(c_path, opt_level='-O3')
+
+            # output1, status1 = utils.run_single_prog(elf_path)
+            # output2, status2 = utils.run_single_prog("node {}".format(js_path))
+
+            wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-O3')
+
+            # lightweight checking
+            # output1, status1 = utils.run_single_prog(elf_path)
+            # output2, status2 = utils.run_single_prog("node {}".format(js_path))
+
+            # heavyweight checking
+            glob_correct, func_correct, glob_perf, func_perf = trace_consistency.trace_check(c_path, clang_opt_level='-O3', emcc_opt_level='-O0', need_compile=False)
+            print("{}\n{}\n{}\n{}\n".format(glob_correct, func_correct, glob_perf, func_perf))
+
+            logf.write(c_path + '\n')
+            logf.write("{}\n{}\n{}\n{}\n".format(glob_correct, func_correct, glob_perf, func_perf))
+            logf.flush()
+
+            # input("continue?")
+    
+    logf.close()
+
 def worker1(sleep_time: int):
     time.sleep(sleep_time * 1)
     try:
@@ -325,6 +365,8 @@ def worker_tmp(sleep_time: int):
 
 
 if __name__ == '__main__':
+    log_wasmopt_output()
+    exit(0)
     # with Pool(16) as p:
     #     p.starmap(worker_tmp, [(i,) for i in range(16)])
     # exit(0)
