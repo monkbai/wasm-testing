@@ -202,6 +202,8 @@ def worker(sleep_time: int):
 
 
 if __name__ == '__main__':
+    reduce_wasmopt("./find_wasm_opt/0-1000/test9-104.c", "./find_wasm_opt/0-1000/test9-104_re.c", check_type="optimization", clang_opt_level='-O3', emcc_opt_level='-O0', wasm_opt_level='-O3')
+    exit(0)
     # reduce_c('./testcases/func_bug_clang/test1072.c', './testcases/func_bug_clang/test1072_re.c', check_type="functionality", clang_opt_level='-O0', emcc_opt_level='-O2')
     # reduce_crash('./test8-78.c', './test8-78_re.c', check_type="crash", clang_opt_level='-O0', emcc_opt_level='-O0')
 

@@ -838,10 +838,35 @@ def main():
     # test
     # c_src_path = './missopt_cases/bug_cases/test6_re_re.c'
     c_src_path = './tmp.c'
-    c_src_path = './test11-594.c'
-    # c_src_path = "./find_wasm_opt/test0-0.c"
+    c_src_path = './find_wasm_opt/0-1000/test0-785_re.c'
+    c_src_path = './find_wasm_opt/0-1000/test9-20_re.c'
+
+    wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_src_path, opt_level='-O0')
+    elf_path, dwarf_path = profile.clang_dwarf(c_src_path, opt_level='-O3')
+
+    # output1, status1 = utils.run_single_prog(elf_path)
+    # output2, status2 = utils.run_single_prog("node {}".format(js_path))
+
+    wasm_path, wasm_dwarf_txt_path = utils.wasm_opt(wasm_path, wasm_opt_level='-O3')
+
+    # lightweight checking
+    # output1, status1 = utils.run_single_prog(elf_path)
+    # output2, status2 = utils.run_single_prog("node {}".format(js_path))
+
+    # heavyweight checking
     debug_mode = False
-    obj_lists = trace_check(c_src_path, clang_opt_level='-O3', emcc_opt_level='-O3', need_compile=True)
+    obj_lists = trace_check(c_src_path, clang_opt_level='-O3', emcc_opt_level='-O0', need_compile=False)
+    utils.cmd("rm ./find_wasm_opt/0-1000/*.dwarf")
+    utils.cmd("rm ./find_wasm_opt/0-1000/*.trace")
+    utils.cmd("rm ./find_wasm_opt/0-1000/*.out")
+    utils.cmd("rm ./find_wasm_opt/0-1000/*.wasm")
+    utils.cmd("rm ./find_wasm_opt/0-1000/*.wat")
+    utils.cmd("rm ./find_wasm_opt/0-1000/*.js")
+    utils.cmd("rm ./find_wasm_opt/0-1000/*.funcs")
+    utils.cmd("rm ./find_wasm_opt/0-1000/*.globs")
+    utils.cmd("rm ./find_wasm_opt/0-1000/*.param")
+    utils.cmd("rm ./find_wasm_opt/0-1000/*.retfuncs")
+    exit(0)
     utils.obj_to_json(obj_lists, 'test1495_re.gt.json')
 
 
