@@ -44,13 +44,20 @@ def get_raw_trace(elf_path: str, glob_addr_file: str, func_addr_file: str, ret_f
     utils.project_dir = project_dir_backup
 
 
-def get_raw_m32trace(elf_path: str, glob_addr_file: str, func_addr_file: str, ret_func_addr_file: str, param_file: str, trace_path: str):
+def get_raw_m32trace(elf_path: str,
+                     glob_addr_file: str, func_addr_file: str, ret_func_addr_file: str, param_file: str,
+                     trace_path: str, input_str=""):
     project_dir_backup = utils.project_dir
     utils.project_dir = config.pintool_dir
     # ------- set project_dir before instrumentation
 
-    status, output = utils.cmd(config.pin_m32trace_cmd.format(trace_path, glob_addr_file, func_addr_file,
-                                                              ret_func_addr_file, param_file, elf_path))
+    if not input_str:
+        status, output = utils.cmd(config.pin_m32trace_cmd.format(trace_path, glob_addr_file, func_addr_file,
+                                                                  ret_func_addr_file, param_file, elf_path))
+    else:
+        status, output = utils.cmd(config.pin_m32trace_input_cmd.format(trace_path, glob_addr_file, func_addr_file,
+                                                                        ret_func_addr_file, param_file, elf_path,
+                                                                        input_str))
 
     # status, output = utils.cmd("rm {}".format(glob_addr_file))
     # status, output = utils.cmd("rm {}".format(func_addr_file))

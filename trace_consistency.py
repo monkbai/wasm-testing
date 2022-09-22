@@ -153,7 +153,7 @@ def get_name_and_addr(glob_obj: dict):
 
     else:  # single addr
         # step_size of single var may never be used, but just in case
-        if "int64" in obj_type or "long int" in obj_type:
+        if "int64" in obj_type or "long int" in obj_type or "long long" in obj_type:
             step_size = 8
         elif '*' in obj_type:  # pointer type
             step_size = config.pointer_size
@@ -744,7 +744,7 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
     return inconsistent_list
 
 
-def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2', need_compile=True, need_info=False):
+def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2', need_compile=True, need_info=False, input_str=""):
     # clean
     c_src_path = os.path.abspath(c_src_path)
     assert c_src_path.endswith('.c')
@@ -788,8 +788,9 @@ def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2', ne
 
     # get trace
     wasm_instrument.instrument(wasm_path, wasm_globs_all, wasm_func_objs, wasm_param_dict, wasm_path, opt_level=emcc_opt_level)
-    clang_raw_trace_path = pin_instrument.instrument(c_src_path, clang_globs, clang_func_objs, clang_param_dict, elf_path)
-    wasm_raw_trace_path, js_status = wasm_instrument.run_wasm_timeout(js_path)  # wasm_instrument.run_wasm(js_path)
+    clang_raw_trace_path = pin_instrument.instrument(c_src_path, clang_globs, clang_func_objs, clang_param_dict, elf_path, input_str=input_str)
+    # wasm_raw_trace_path, js_status = wasm_instrument.run_wasm_timeout(js_path, input_str=input_str)
+    wasm_raw_trace_path, js_status = wasm_instrument.run_wasm(js_path, input_str=input_str)
     if js_status:  # non-exit loop in optimized wasm code, special handler
         glob_correct_inconsistent_list = ["timeout"]
         print('{} glob (incorrect):'.format(os.path.basename(c_src_path)), glob_correct_inconsistent_list)
@@ -839,7 +840,8 @@ def main():
     # c_src_path = './missopt_cases/bug_cases/test6_re_re.c'
     c_src_path = './tmp.c'
     c_src_path = './find_wasm_opt/0-1000/test0-785_re.c'
-    c_src_path = './find_wasm_opt/0-1000/test9-20_re.c'
+    c_src_path = './find_wasm_opt/0-1000/test15-935_re.c'
+    c_src_path = '/home/tester/Downloads/jacobi-2d.c'
 
     wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_src_path, opt_level='-O0')
     elf_path, dwarf_path = profile.clang_dwarf(c_src_path, opt_level='-O3')
@@ -856,6 +858,7 @@ def main():
     # heavyweight checking
     debug_mode = False
     obj_lists = trace_check(c_src_path, clang_opt_level='-O3', emcc_opt_level='-O0', need_compile=False)
+    #                         input_str="-k -f /home/tester/Downloads/bzip2.c")
     utils.cmd("rm ./find_wasm_opt/0-1000/*.dwarf")
     utils.cmd("rm ./find_wasm_opt/0-1000/*.trace")
     utils.cmd("rm ./find_wasm_opt/0-1000/*.out")

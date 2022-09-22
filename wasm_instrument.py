@@ -476,11 +476,11 @@ def instrument(wasm_path: str, glob_objs: list, func_objs: list, param_dict: dic
 
     wat_txt = wasm2wat(wasm_path)
 
-    iprintf_flag = True
-    if "func $iprintf" in wat_txt:
+    iprintf_flag = "iprintf"
+    if "func $iprintf " in wat_txt:
         pass
-    elif "func $printf" in wat_txt:
-        iprintf_flag = False
+    elif "func $printf " in wat_txt:
+        iprintf_flag = "printf"
     else:
         assert False, "what if we cannot find printf"
 
@@ -491,13 +491,13 @@ def instrument(wasm_path: str, glob_objs: list, func_objs: list, param_dict: dic
     # if opt_level.strip().endswith('O0'):
     #     new_wat_txt = new_wat_txt.replace('$iprintf', '$printf')  # iprintf and printf are different
 
-    if not iprintf_flag:
+    if iprintf_flag == "printf":
         new_wat_txt = new_wat_txt.replace("$iprintf", "$printf")
 
     wat2wasm(new_wasm_path, new_wat_txt)
 
 
-def run_wasm(js_path: str):
+def run_wasm(js_path: str, input_str=""):
     """ Deprecated """
     js_path = os.path.abspath(js_path)
     output_path = js_path + '.trace'
@@ -506,21 +506,27 @@ def run_wasm(js_path: str):
     tmp_dir = utils.project_dir
     utils.project_dir = dir_path
 
-    status, output = utils.cmd(config.nodejs_cmd.format(js_path, output_path))
+    if not input_str:
+        status, output = utils.cmd(config.nodejs_cmd.format(js_path, output_path))
+    else:
+        status, output = utils.cmd(config.nodejs_input_cmd.format(js_path, input_str, output_path))
 
     utils.project_dir = tmp_dir
 
-    return output_path
+    return output_path, status
 
 
-def run_wasm_timeout(js_path: str):
+def run_wasm_timeout(js_path: str, input_str=""):
     """ Add timeout, bug in wasm-opt will cause loop without exit """
     js_path = os.path.abspath(js_path)
     output_path = js_path + '.trace'
     dir_path = os.path.dirname(js_path)
 
     timeout_sec = 10  # a normal testcase should end in 3 seconds
-    proc = subprocess.Popen(config.nodejs_cmd.format(js_path, output_path), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if not input_str:
+        proc = subprocess.Popen(config.nodejs_cmd.format(js_path, output_path), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    else:
+        proc = subprocess.Popen(config.nodejs_input_cmd.format(js_path, input_str, output_path), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     timer = Timer(timeout_sec, proc.kill)
     try:
         timer.start()

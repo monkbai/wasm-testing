@@ -46,7 +46,7 @@ def print_func_arg_size(func_objs: list, param_dict: dict, func_param_file: str)
                 arg_type = arg_type.replace('const ', '')
                 arg_type = arg_type.replace('unsigned ', '')  # we only care about the size
                 arg_type = arg_type.replace('signed ', '')
-                if mat := re.search(r'\(0x[\da-fA-F]+\s"(\w+)"\)', arg_type):
+                if mat := re.search(r'\(0x[\da-fA-F]+\s"([\w\s]+)"\)', arg_type):
                     arg_type = mat.group(1)
                     if "int64" in arg_type or "long long" in arg_type:
                         arg_size = 8
@@ -70,7 +70,7 @@ def print_func_arg_size(func_objs: list, param_dict: dict, func_param_file: str)
         f.close()
 
 
-def instrument(c_src_path: str, glob_objs: list, func_objs: list, param_dict: dict, elf_path: str):
+def instrument(c_src_path: str, glob_objs: list, func_objs: list, param_dict: dict, elf_path: str, input_str=""):
     c_src_path = os.path.abspath(c_src_path)
     glob_addr_file = c_src_path + '.globs'
     func_addr_file = c_src_path + '.funcs'
@@ -106,7 +106,7 @@ def instrument(c_src_path: str, glob_objs: list, func_objs: list, param_dict: di
     # run pin_tool, get raw trace
     # pintool.get_raw_trace(elf_path, glob_addr_file, func_addr_file, ret_func_addr_file, param_file, trace_path)
     # use m32 instead
-    pintool.get_raw_m32trace(elf_path, glob_addr_file, func_addr_file, ret_func_addr_file, param_file, trace_path)
+    pintool.get_raw_m32trace(elf_path, glob_addr_file, func_addr_file, ret_func_addr_file, param_file, trace_path, input_str)
 
     return trace_path
 
