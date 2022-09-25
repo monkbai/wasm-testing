@@ -44,7 +44,7 @@ def get_name_and_addr(glob_obj: dict):
         obj_type = obj["DW_AT_type"]
         obj_type = obj_type.replace('const ', '')
         obj_type = obj_type.replace('volatile ', '')
-        if mat := re.search(r'\(0x[\da-fA-F]+\s"(\w+)((\[\d+])+)"\)', obj_type):
+        if mat := re.search(r'\(0x[\da-fA-F]+\s"([\w\s]+)((\[\d+])+)"\)', obj_type):
             obj_type = mat.group(1)
             array_dim = mat.group(2)
             array_dim = array_dim.replace('[', '')
@@ -57,9 +57,9 @@ def get_name_and_addr(glob_obj: dict):
                     obj_num *= int(dim)
             if "int64" in obj_type:
                 step_size = 8
-            elif "int32" in obj_type:
+            elif "int32" in obj_type or obj_type == 'int' or obj_type == 'unsigned int' or obj_type == 'long' or obj_type == 'unsigned long' or obj_type == 'long unsigned int' or obj_type == 'long int':
                 step_size = 4
-            elif "int16" in obj_type:
+            elif "int16" in obj_type or obj_type == 'short':
                 step_size = 2
             elif "int8" in obj_type or 'char' in obj_type:
                 step_size = 1
@@ -157,11 +157,11 @@ def get_name_and_addr(glob_obj: dict):
             step_size = 8
         elif '*' in obj_type:  # pointer type
             step_size = config.pointer_size
-        elif "int32" in obj_type or '"int"' in obj_type:
+        elif "int32" in obj_type or '"int"' in obj_type or '"unsigned int"' in obj_type or '"long"' in obj_type:
             step_size = 4
-        elif "int16" in obj_type:
+        elif "int16" in obj_type or '"short"' in obj_type:
             step_size = 2
-        elif "int8" in obj_type:
+        elif "int8" in obj_type or '"char"' in obj_type:
             step_size = 1
         elif 'char' not in obj_type and 'short' not in obj_type and 'int' not in obj_type and 'long' not in obj_type:
             step_size = None  # ignore complex structure/union
@@ -479,10 +479,9 @@ def trace_check_glob_correct(wasm_glob_trace_dict: dict, clang_glob_trace_dict: 
                 clang_trace.append(lcs.PtrItem(ptr_name=glob_name, ptr_value=v))
 
         if glob_trace[-1] != clang_trace[-1]:
-            if not \
-                    (isinstance(glob_trace[-1], int) and
-                     clang_glob_trace_dict[glob_name][-1][1].startswith("OPT\n") and
-                     ((glob_trace[-1] & clang_trace[-1]) == clang_trace[-1]) or clang_trace[-1] == 1):
+            # if the type is int, clang uses optimized inst, this is not an inconsistent case
+            if not (isinstance(glob_trace[-1], int) and clang_glob_trace_dict[glob_name][-1][1].startswith("OPT\n") and
+                     ((glob_trace[-1] & clang_trace[-1]) == clang_trace[-1] or clang_trace[-1] == 1)):
                 # (clang_trace[-1] == 1 and "OPT\n") is a kind of special optimization (codegen pattern?) used by clang
                 # TODO: re-consider the compiler optimization that may only update part of the var (e.g., OPT mark)
                 inconsistent_list.append("{}:{}".format(glob_name, glob_trace[-1]))
@@ -524,6 +523,7 @@ def trace_check_glob_correct(wasm_glob_trace_dict: dict, clang_glob_trace_dict: 
 
 
 def trace_check_glob_perf(wasm_glob_trace_dict: dict, clang_glob_trace_dict: dict, wasm_globs: list):
+    global redundant_glob_writes, redundant_func_calls, overall_wasm_glob_writes, overall_wasm_func_calls, overall_clang_glob_writes, overall_clang_func_calls
     if debug_mode:
         print('\nChecking performance (global writes) ...')
     inconsistent_list = []
@@ -541,6 +541,7 @@ def trace_check_glob_perf(wasm_glob_trace_dict: dict, clang_glob_trace_dict: dic
         if glob_name not in clang_glob_trace_dict:
             if 'crc32' not in glob_name:
                 inconsistent_list.append(glob_name)
+                redundant_glob_writes += len(glob_trace)
                 if debug_mode:
                     print('>Redundant glob trace founded.')
                     print('\tglob_name: {}'.format(glob_name))
@@ -586,6 +587,7 @@ def trace_check_glob_perf(wasm_glob_trace_dict: dict, clang_glob_trace_dict: dic
                 inconsistent_list.append("{}:{}:{}".format(glob_name, 'ptr', perf_distance))
             else:
                 inconsistent_list.append("{}:{}:{}".format(glob_name, glob_trace[idx], perf_distance))
+            redundant_glob_writes += len(glob_trace) - len(lcs_trace)
             if debug_mode:
                 if glob_trace[-1] == clang_trace[-1]:
                     print('>Glob trace performance inconsistency founded.')
@@ -669,6 +671,7 @@ def trace_check_func_correct(wasm_func_trace_dict: dict, clang_func_trace_dict: 
 
 def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dict, wasm_func_objs: list, wasm_param_dict: dict):
     # TODO: for the performance check, we compare Clang O3 with Wasm O3? i.e. does Wasm compiler have comparable optimization quality?
+    global redundant_glob_writes, redundant_func_calls, overall_wasm_glob_writes, overall_wasm_func_calls, overall_clang_glob_writes, overall_clang_func_calls
     if debug_mode:
         print('\nChecking performance (function calls) ...')
     inconsistent_list = []
@@ -713,6 +716,9 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
             print('>Func trace inconsistency founded.')
             print('{} could be optimized or inlined.'.format(func_name))
             inconsistent_list.append("{}:{}".format(func_name, func_item_trace[0].values_str()))
+            for it in func_trace:
+                if it[0] == 'P':
+                    redundant_func_calls += 1
             continue
 
         clang_trace = clang_func_trace_dict[func_name]
@@ -734,6 +740,12 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
                 if idx not in lcs_item_trace:
                     break
             inconsistent_list.append("{}:{}:{}".format(func_name, func_item_trace[idx].values_str(), perf_distance))
+            for i in range(len(func_trace)):
+                if i in lcs_item_trace:
+                    continue
+                it = func_trace[i]
+                if it[0] == 'P':
+                    redundant_func_calls += 1
             if debug_mode:
                 print('>Func trace inconsistency founded.')
                 print('\tfunc_name: {},'.format(func_name), end=' ')
@@ -742,6 +754,31 @@ def trace_check_func_perf(wasm_func_trace_dict: dict, clang_func_trace_dict: dic
                         print('item_index: {}, item_type: {}'.format(i, func_trace[i][0]), end=' ')
                 print()
     return inconsistent_list
+
+
+redundant_glob_writes = 0
+redundant_func_calls = 0
+overall_wasm_glob_writes = 0
+overall_wasm_func_calls = 0
+overall_clang_glob_writes = 0
+overall_clang_func_calls = 0
+
+
+def overall_statistic(wasm_glob_trace_dict: dict, clang_glob_trace_dict: dict, wasm_func_trace_dict: dict, clang_func_trace_dict: dict):
+    global redundant_glob_writes, redundant_func_calls, overall_wasm_glob_writes, overall_wasm_func_calls, overall_clang_glob_writes, overall_clang_func_calls
+    for glob_name, glob_trace in wasm_glob_trace_dict.items():
+        overall_wasm_glob_writes += len(glob_trace)
+    for glob_name, glob_trace in clang_glob_trace_dict.items():
+        overall_clang_glob_writes += len(glob_trace)
+
+    for func_name, func_trace in wasm_func_trace_dict.items():
+        for it in func_trace:
+            if it[0] == 'P':
+                overall_wasm_func_calls += 1
+    for func_name, func_trace in clang_func_trace_dict.items():
+        for it in func_trace:
+            if it[0] == 'P':
+                overall_clang_func_calls += 1
 
 
 def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2', need_compile=True, need_info=False, input_str=""):
@@ -828,8 +865,112 @@ def trace_check(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2', ne
         print('{} glob (performance):'.format(os.path.basename(c_src_path)), glob_perf_inconsistent_list)
         print('{} func (performance):'.format(os.path.basename(c_src_path)), func_perf_inconsistent_list)
 
+    overall_statistic(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_func_trace_dict, clang_func_trace_dict)
+    print("redundant wasm glob writes: {}".format(redundant_glob_writes))
+    print("redundant wasm func calls: {}".format(redundant_func_calls))
+    print("overall wasm glob writes: {}".format(overall_wasm_glob_writes))
+    print("overall wasm func calls: {}".format(overall_wasm_func_calls))
+    print("overall clang glob writes: {}".format(overall_clang_glob_writes))
+    print("overall clang func calls: {}".format(overall_clang_func_calls))
+
     if need_info:
         return glob_correct_inconsistent_list, func_correct_inconsistent_list, glob_perf_inconsistent_list, func_perf_inconsistent_list, ((wasm_globs, clang_globs), (wasm_func_objs, clang_func_objs))
+    else:
+        return glob_correct_inconsistent_list, func_correct_inconsistent_list, glob_perf_inconsistent_list, func_perf_inconsistent_list
+
+
+def trace_check_with_wasabi(c_src_path: str, clang_opt_level='-O0', emcc_opt_level='-O2', need_compile=True, need_info=False, input_str=""):
+    # clean
+    c_src_path = os.path.abspath(c_src_path)
+    assert c_src_path.endswith('.c')
+    elf_path = c_src_path[:c_src_path.rfind('.')] + '.out'
+    clang_dwarf_txt_path = elf_path + '.dwarf'
+
+    wasm_path = c_src_path[:c_src_path.rfind('.')] + '.wasm'
+    js_path = c_src_path[:-2] + '.js'
+    wasm_dwarf_txt_path = wasm_path + '.dwarf'
+
+    if need_compile:
+        status, output = utils.cmd("rm {}".format(os.path.abspath(elf_path)))
+        status, output = utils.cmd("rm {}".format(os.path.abspath(wasm_path)))
+
+    if not silent_mode:
+        print("\nTrace Consistency Checking for {}...".format(c_src_path))
+    # profile, get dwarf information of global variables and function arguments
+    wasm_globs, clang_globs = profile.collect_glob_vars(c_src_path, clang_opt_level, emcc_opt_level, need_compile)
+    (wasm_func_objs, wasm_param_dict, wasm_func_names_list), \
+    (clang_func_objs, clang_param_dict, clang_func_names_list) = profile.collect_funcs(c_src_path, clang_opt_level,
+                                                                                       emcc_opt_level, need_compile)
+    wasm_globs_all = profile.get_wasm_globs(c_src_path, emcc_opt_level, need_compile)
+
+    if len(wasm_globs) == 0:
+        if debug_mode:
+            print("No globs, skip this case")
+        return [], [], [], []
+
+    # compile
+    if need_compile:
+        wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_src_path, opt_level=emcc_opt_level)
+        elf_path, dwarf_path = profile.clang_dwarf(c_src_path, opt_level=clang_opt_level)
+
+    # Before checking
+    # wat_path = wasm_path[:-5] + '.wat'
+    # if not os.path.exists(wat_path):
+    wat_path = utils.wasm2wat(wasm_path)
+
+    mapping_dict, wasm_objs_dict, clang_objs_dict = pointed_objs.get_pointed_objs_mapping(c_src_path, elf_path,
+                                                                                          wat_path, clang_opt_level,
+                                                                                          emcc_opt_level, need_compile)
+    lcs.FuncItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
+    lcs.PtrItem.set_dict(mapping_dict, wasm_objs_dict, clang_objs_dict)
+
+    # get trace
+    wasm_instrument.instrument(wasm_path, wasm_globs_all, wasm_func_objs, wasm_param_dict, wasm_path,
+                               opt_level=emcc_opt_level)
+    clang_raw_trace_path = pin_instrument.instrument(c_src_path, clang_globs, clang_func_objs, clang_param_dict,
+                                                     elf_path, input_str=input_str)
+    # wasm_raw_trace_path, js_status = wasm_instrument.run_wasm_timeout(js_path, input_str=input_str)
+    wasm_raw_trace_path, js_status = wasm_instrument.run_wasm(js_path, input_str=input_str)
+    if js_status:  # non-exit loop in optimized wasm code, special handler
+        glob_correct_inconsistent_list = ["timeout"]
+        print('{} glob (incorrect):'.format(os.path.basename(c_src_path)), glob_correct_inconsistent_list)
+        return glob_correct_inconsistent_list, [], [], []
+
+    # trace generalization
+    wasm_glob_trace_dict, wasm_func_trace_dict = generalize_wasm_trace(wasm_raw_trace_path,
+                                                                       wasm_globs, wasm_func_objs, wasm_param_dict)
+    clang_glob_trace_dict, clang_func_trace_dict = generalize_pin_trace(clang_raw_trace_path,
+                                                                        clang_globs, clang_func_objs, clang_param_dict)
+    # TODO: update instrumentation, and provided more information to locate bugs
+
+    # trace consistency check
+    if len(wasm_globs) > 0:
+        glob_correct_inconsistent_list = \
+            trace_check_glob_correct(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs, case2_check=False)
+    else:
+        glob_correct_inconsistent_list = []
+    func_correct_inconsistent_list = \
+        trace_check_func_correct(wasm_func_trace_dict, clang_func_trace_dict, wasm_func_objs, wasm_param_dict)
+
+    if not silent_mode or len(glob_correct_inconsistent_list) > 0 or len(func_correct_inconsistent_list) > 0:
+        print('{} glob (incorrect):'.format(os.path.basename(c_src_path)), glob_correct_inconsistent_list)
+        print('{} func (incorrect):'.format(os.path.basename(c_src_path)), func_correct_inconsistent_list)
+
+    if len(wasm_globs) > 0:
+        glob_perf_inconsistent_list = \
+            trace_check_glob_perf(wasm_glob_trace_dict, clang_glob_trace_dict, wasm_globs)
+    else:
+        glob_perf_inconsistent_list = []
+    func_perf_inconsistent_list = \
+        trace_check_func_perf(wasm_func_trace_dict, clang_func_trace_dict, wasm_func_objs, wasm_param_dict)
+
+    if not silent_mode or len(glob_perf_inconsistent_list) > 0 or len(func_perf_inconsistent_list) > 0:
+        print('{} glob (performance):'.format(os.path.basename(c_src_path)), glob_perf_inconsistent_list)
+        print('{} func (performance):'.format(os.path.basename(c_src_path)), func_perf_inconsistent_list)
+
+    if need_info:
+        return glob_correct_inconsistent_list, func_correct_inconsistent_list, glob_perf_inconsistent_list, func_perf_inconsistent_list, (
+        (wasm_globs, clang_globs), (wasm_func_objs, clang_func_objs))
     else:
         return glob_correct_inconsistent_list, func_correct_inconsistent_list, glob_perf_inconsistent_list, func_perf_inconsistent_list
 
@@ -841,7 +982,11 @@ def main():
     c_src_path = './tmp.c'
     c_src_path = './find_wasm_opt/0-1000/test0-785_re.c'
     c_src_path = './find_wasm_opt/0-1000/test15-935_re.c'
-    c_src_path = '/home/tester/Downloads/jacobi-2d.c'
+    c_src_path = '/home/tester/Downloads/adpcm/adpcm.c'
+    c_src_path = '/home/tester/Downloads/mips/mips.c'
+    c_src_path = '/home/tester/Downloads/gsm/gsm.c'
+    c_src_path = '/home/tester/Downloads/jpeg/main.c'
+    c_src_path = '/home/tester/Downloads/motion/mpeg2.c'
 
     wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_src_path, opt_level='-O0')
     elf_path, dwarf_path = profile.clang_dwarf(c_src_path, opt_level='-O3')

@@ -93,10 +93,22 @@ def get_data_offset(func_sec: str, with_skip=False):
     return offset, appro_len
 
 
+def get_stack_pointer(func_sec: str):
+    idx = func_sec.find("  (global $")
+    tmp = func_sec[idx:].strip()
+    mat = re.search(r"\(global \$__stack_pointer \(mut i32\) \(i32.const (\d+)\)\)", tmp)
+    stack_base = int(mat.group(1))
+    return stack_base
+
+
 def add_data_str(func_sec: str):
-    data_offset, appro_len = get_data_offset(func_sec, with_skip=True)
+    # data_offset, appro_len = get_data_offset(func_sec, with_skip=True)
     # some variables are not explicitly defined in .wat, 4096 --> avoid collision
-    next_offset = data_offset + appro_len + 4096
+    # next_offset = data_offset + appro_len + 4096
+
+    # put the data str after stack base, to avoid data collision
+    next_offset = get_stack_pointer(func_sec) + 1024
+
     idx = func_sec.rfind(')')
 
     str_count = wasm_code.wasm_data_str.count('{}')

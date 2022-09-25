@@ -47,8 +47,8 @@ def get_wasm_strs(wat_path: str):
             if mat := re.match(r'\(data\s\$\.rodata\s\(i32\.const\s(\d+)\)\s"(.+)"\)', l):
                 base_addr = int(mat.group(1))
                 whole_str = mat.group(2)
-                if '\\00\\00\\00\\00' in whole_str:  # TODO: not very safe
-                    whole_str = whole_str[:whole_str.find('\\00\\00\\00\\00')]
+                # if '\\00\\00\\00\\00' in whole_str:  # TODO: not very safe
+                #     whole_str = whole_str[:whole_str.find('\\00\\00\\00\\00')]
                 whole_str = whole_str.replace('\\00', '\00')
                 whole_str = whole_str.replace('\\0a', '\n')
 
@@ -64,15 +64,17 @@ def get_wasm_strs(wat_path: str):
                         str_value = whole_str[start_idx:]
 
                     addr = base_addr + start_idx
-                    str_dict['"{}"'.format(str_value)] = addr
+                    if '\\' not in str_value:
+                        str_dict['"{}"'.format(str_value)] = addr
 
                     idx = end_idx + 1
+                break
     return str_dict
 
 
 def get_str_mapping(clang_elf_path: str, wat_path: str):
     clang_str_dict = get_elf_strs(clang_elf_path)
-    wasm_str_dict = get_wasm_strs(wat_path)
+    wasm_str_dict = dict()  # wasm_str_dict = get_wasm_strs(wat_path)
 
     str_mapping = []
 
@@ -156,7 +158,7 @@ def _get_pointed_objs_mapping(c_path: str, elf_path: str, wat_path: str, clang_o
         mapping_dict[(clang_addr, wasm_addr)] = name
     for wasm_name, wasm_addr in wasm_globs_dict.items():
         if wasm_addr not in wasm_objs_dict:
-            wasm_objs_dict[wasm_addr] = (wasm_name, 0)
+            wasm_objs_dict[wasm_addr] = (wasm_name, 0)  # what is this loop for?
     for clang_name, clang_addr in clang_globs_dict.items():
         if clang_addr not in clang_objs_dict:
             clang_objs_dict[clang_addr] = (clang_name, 0)

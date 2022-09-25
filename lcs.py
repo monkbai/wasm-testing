@@ -121,6 +121,10 @@ def lcs(list1: list, list2: list):
     n1 = len(list1)
     n2 = len(list2)
 
+    if max(n1, n2) >= 2500:
+        # do not solve the lcs problem when the list is overly long
+        return [i for i in range(min(n1, n2))], [i for i in range(min(n1, n2))]
+
     col = n2 + 2
     row = n1 + 2
     dp = [[0 for i in range(col)] for j in range(row)]
