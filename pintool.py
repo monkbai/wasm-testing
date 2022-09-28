@@ -6,7 +6,7 @@ import config
 import profile
 
 tools_list = ["tracer", ]
-m32tools_list = ["tracer_m32", ]
+m32tools_list = ["tracer_m32", "inscount0"]
 
 
 def compile_pin_tool(pintools_list: list, cmd_str=config.compile_pintool_cmd):

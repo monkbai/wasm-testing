@@ -983,13 +983,18 @@ def main():
     c_src_path = './find_wasm_opt/0-1000/test0-785_re.c'
     c_src_path = './find_wasm_opt/0-1000/test15-935_re.c'
     c_src_path = '/home/tester/Downloads/adpcm/adpcm.c'
-    c_src_path = '/home/tester/Downloads/mips/mips.c'
-    c_src_path = '/home/tester/Downloads/gsm/gsm.c'
-    c_src_path = '/home/tester/Downloads/jpeg/main.c'
-    c_src_path = '/home/tester/Downloads/motion/mpeg2.c'
+    # c_src_path = '/home/tester/Downloads/mips/mips.c'
+    # c_src_path = '/home/tester/Downloads/gsm/gsm.c'
+    # c_src_path = '/home/tester/Downloads/jpeg/main.c'
+    # c_src_path = '/home/tester/Downloads/motion/mpeg2.c'
+    # c_src_path = '/home/tester/Documents/BenchmarkingWebAssembly/modified_benchmarks/CHStone_v1.11_150204/adpcm/adpcm.c'
+    # c_src_path = '/home/tester/Documents/BenchmarkingWebAssembly/modified_benchmarks/CHStone_v1.11_150204/mips/mips.c'
+    # c_src_path = '/home/tester/Documents/BenchmarkingWebAssembly/modified_benchmarks/CHStone_v1.11_150204/gsm/gsm.c'
+    # c_src_path = '/home/tester/Documents/BenchmarkingWebAssembly/modified_benchmarks/CHStone_v1.11_150204/jpeg/main.c'
+    # c_src_path = '/home/tester/Documents/BenchmarkingWebAssembly/modified_benchmarks/CHStone_v1.11_150204/motion/mpeg2.c'
 
-    wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_src_path, opt_level='-O0')
     elf_path, dwarf_path = profile.clang_dwarf(c_src_path, opt_level='-O3')
+    wasm_path, js_path, wasm_dwarf_txt_path = profile.emscripten_dwarf(c_src_path, opt_level='-O0')
 
     # output1, status1 = utils.run_single_prog(elf_path)
     # output2, status2 = utils.run_single_prog("node {}".format(js_path))
