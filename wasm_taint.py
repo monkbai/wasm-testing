@@ -168,12 +168,65 @@ def reverse_taint(blk: list):
     return store_inst_count, related_inst_count
 
 
+def func_call_cost(func_txt: str):
+    param_count = 0
+    result_count = 0
+    func_name = ''
+
+    stack_update_count = 0
+    param_store_count = 0
+
+    stack_var = 0
+    lines = func_txt.split('\n')
+    idx = 0
+    while idx < len(lines):
+        l = lines[idx]
+        l = l.strip()
+        if l.startswith("(func $"):
+            func_name = re.search(r"\(func (\$\w+)", l).group(1)
+            if mat := re.search(r"\(param( \w+)+\)", l):
+                param_count = mat.group().count(' ')
+            if mat := re.search(r"\(result( \w+)+\)", l):
+                result_count = mat.group().count(' ')
+        elif l.startswith("global.get $__stack_pointer") and \
+                'i32.const' in lines[idx+1] and \
+                'i32.sub' in lines[idx+2] and \
+                'local.tee' in lines[idx+3] and \
+                'global.set $__stack_pointer' in lines[idx+4]:
+            stack_var = re.search(r"local.tee (\d+)", lines[idx+3]).group(1)
+            stack_update_count += 5
+            idx += 4
+        elif l.startswith("global.get $__stack_pointer") and \
+                'i32.const' in lines[idx+1] and \
+                'i32.sub' in lines[idx+2] and \
+                'local.tee' in lines[idx+3]:
+            stack_var = re.search(r"local.tee (\d+)", lines[idx+3]).group(1)
+            stack_update_count += 4
+            idx += 2
+        elif l.startswith("local.get ") and \
+                'i32.const' in lines[idx+1] and \
+                'i32.add' in lines[idx+2] and \
+                'global.set $__stack_pointer' in lines[idx+3]:
+            stack_update_count += 4
+            idx += 3
+        elif ('local.tee' in l or 'local.get' in l) and \
+                ('i32.const' in lines[idx+1] or 'local.get' in lines[idx+1]) and \
+                'i32.store' in lines[idx+2]:
+            param_store_count += 3
+            idx += 2
+        idx += 1
+    return stack_update_count + param_store_count + param_count + result_count + 1
+
+
 overall_s_count = 0
 overall_r_count = 0
 
+overall_func_count = 0
+overall_func_cost = 0
+
 
 def analysis(wat_path: str):
-    global overall_s_count, overall_r_count
+    global overall_s_count, overall_r_count, overall_func_count, overall_func_cost
     func_list = []
     with open(wat_path, 'r') as f:
         wat_txt = f.read()
@@ -185,6 +238,11 @@ def analysis(wat_path: str):
             func_list.append(func_txt)
         func_list.append(wat_txt)
 
+    for f in func_list:
+        func_cost = func_call_cost(f)
+        overall_func_count += 1
+        overall_func_cost += func_cost
+
     store_count = 0
     related_count = 0
     for f in func_list:
@@ -193,14 +251,14 @@ def analysis(wat_path: str):
             s_count, r_count = reverse_taint(b)
             store_count += s_count
             related_count += r_count
-    print("store_inst_count:", store_count)
-    print("related_inst_count:", related_count)
+    # print("store_inst_count:", store_count)
+    # print("related_inst_count:", related_count)
     overall_s_count += store_count
     overall_r_count += related_count
 
 
 if __name__ == '__main__':
-    analysis("/home/tester/Downloads/adpcm/adpcm.wat")
+    # analysis("/home/tester/Downloads/adpcm/adpcm.wat")
     analysis("/home/tester/Downloads/mips/mips.wat")
     analysis("/home/tester/Downloads/gsm/gsm.wat")
     analysis("/home/tester/Downloads/jpeg/main.wat")
@@ -208,6 +266,9 @@ if __name__ == '__main__':
     print("overall_s_count:", overall_s_count)
     print("overall_r_count:", overall_r_count)
     print(overall_r_count / overall_s_count)
+    print("overall_func_count:", overall_func_count)
+    print("overall_func_cost:", overall_func_cost)
+    print(overall_func_cost / overall_func_count)
 
     analysis("/home/tester/Documents/BenchmarkingWebAssembly/modified_benchmarks/CHStone_v1.11_150204/mips/mips.wat")
     analysis("/home/tester/Documents/BenchmarkingWebAssembly/modified_benchmarks/CHStone_v1.11_150204/adpcm/adpcm.wat")
@@ -218,3 +279,6 @@ if __name__ == '__main__':
     print("overall_s_count:", overall_s_count)
     print("overall_r_count:", overall_r_count)
     print(overall_r_count / overall_s_count)
+    print("overall_func_count:", overall_func_count)
+    print("overall_func_cost:", overall_func_cost)
+    print(overall_func_cost / overall_func_count)

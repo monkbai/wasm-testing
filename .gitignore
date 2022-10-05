@@ -29,7 +29,9 @@ __pycache__/
 *.sh
 *.tmp
 *.json
-
+*.bc
+*.html
+*.o
 
 .idea/
 
