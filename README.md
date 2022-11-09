@@ -18,6 +18,6 @@ indicators that practically and systematically reflect the optimization
 degree across wasm and native executables.
 
 <p align="center">
-  <img src="https://github.com/monkbai/wasm-testing/blob/main/workflow.png?raw=true" width="881" title="ditwo-workflow">
+  <img src="https://github.com/monkbai/wasm-testing/blob/main/doc/workflow.png" width="881" title="ditwo-workflow">
 </p>
 <br />
