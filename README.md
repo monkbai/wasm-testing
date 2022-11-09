@@ -32,6 +32,15 @@ maintained in the official wasm optimizer and compiler/toolchain library ([`Bina
 Note that we enable the `-O3` option and extra optimization passes to unleash the full optimization capability of `wasm-opt`. 
 The list of employed optimization passes is: `"-O3 -g --mvp-features --converge --inlining-optimizing --local-cse --code-folding --licm --rse --precompute-propagate --optimize-added-constants-propagate"`
 
+With 16K randomly generated C programs as test inputs, Ditwo
+uncovers **1,293** inputs that result in under-optimized wasm 
+programs. With about 140 man-hours, we manually diagnose the root
+causes behind all exposed MO (see details in our paper). 
+Moreover, with semi-manual study of five real-world applications, 
+we estimate the lower bound of performance improvement, on 
+average **17.15%**, after fixing the MO cases. The results indicate 
+the severity of MO identified by Ditwo.
+
 ## Code Structure
 ```
 ├── config.py            // configuration
