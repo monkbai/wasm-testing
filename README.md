@@ -11,7 +11,7 @@ Artifact for our draft "Exploring Missed Optimizations in WebAssembly Optimizers
 
 We aim to present the first systematic and in-depth understanding 
 of the status quo of WebAssembly(wasm) optimizations with **Ditwo**, a 
-**Di**fferential **T**esting framework to uncover missed optimizations (MO) 
+**Di**fferential **T**esting framework to uncover *missed optimizations* (MO) 
 of **W**asm **O**ptimizers. Ditwo compiles a C program into both native x86 
 executable and wasm executable, and differentiates *optimization indication traces* 
 (OITraces) logged by running each executable to uncover MO. Each OITrace 
