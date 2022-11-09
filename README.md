@@ -1,9 +1,11 @@
 # Ditwo: Differential Testing framework for Wasm Optimizers
-
+<!--- not compatible with anonymous git hub repo link
 <p align="center">
   <img src="https://github.com/monkbai/wasm-testing/blob/main/doc/ditwo.png?raw=true" width="120" title="ditwo-logo">
 </p>
 <br />
+--->
+![ditwo-logo](doc/ditwo.png)
 
 Artifact for our draft "Exploring Missed Optimizations in WebAssembly Optimizers".
 
@@ -17,7 +19,10 @@ is composed with global variable writes and function calls, two performance
 indicators that practically and systematically reflect the optimization 
 degree across wasm and native executables.
 
+<!--- not compatible with anonymous git hub repo link
 <p align="center">
   <img src="https://github.com/monkbai/wasm-testing/blob/main/doc/workflow.png" width="881" title="ditwo-workflow">
 </p>
 <br />
+--->
+![ditwo-workflow](doc/workflow.png)
