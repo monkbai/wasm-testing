@@ -7,7 +7,7 @@
 --->
 ![ditwo-logo](doc/ditwo.png)
 
-Artifact for our draft "Exploring Missed Optimizations in WebAssembly Optimizers".
+Artifact for ISSTA'23 paper "Exploring Missed Optimizations in WebAssembly Optimizers".
 
 We aim to present the first systematic and in-depth understanding 
 of the status quo of WebAssembly(wasm) optimizations with **Ditwo**, a 
