@@ -42,10 +42,11 @@ average **17.15%**, after fixing the MO cases. The results indicate
 the severity of MO identified by Ditwo.
 
 ## Findings
-[global varaible is not optimized](https://github.com/WebAssembly/binaryen/issues/4947)
-[empty function is not inlined](https://github.com/WebAssembly/binaryen/issues/4948)
-[optimizable loop is not optimized](https://github.com/WebAssembly/binaryen/issues/4950)
-[new peephole optimization pattern](https://github.com/WebAssembly/binaryen/issues/5118)
+
+Global varaible is not optimized: [https://github.com/WebAssembly/binaryen/issues/4947](https://github.com/WebAssembly/binaryen/issues/4947)  
+Empty function is not inlined: [https://github.com/WebAssembly/binaryen/issues/4948](https://github.com/WebAssembly/binaryen/issues/4948)  
+Optimizable loop is not optimized: [https://github.com/WebAssembly/binaryen/issues/4950](https://github.com/WebAssembly/binaryen/issues/4950)  
+New peephole optimization pattern: [https://github.com/WebAssembly/binaryen/issues/5118](https://github.com/WebAssembly/binaryen/issues/5118)  
 
 ## Code Structure
 ```
