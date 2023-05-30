@@ -73,3 +73,5 @@ New peephole optimization pattern: [https://github.com/WebAssembly/binaryen/issu
 └── wasm_taint.py        // backward taint analysis
 
 ```
+### About the WebAssembly Instrumentation
+For people who also want to do WebAssembly instrumentation, we highly recommend the awesome [Wasabi](https://github.com/danleh/wasabi) framework instead of the brittle instrumentation code used in this project.
